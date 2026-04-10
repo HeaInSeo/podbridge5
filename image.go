@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/containers/buildah"
 	"github.com/containers/buildah/define"
+	"github.com/containers/buildah/imagebuildah"
 	"github.com/containers/common/pkg/config"
 	imageTypes "github.com/containers/image/v5/types"
 	"github.com/containers/podman/v5/pkg/bindings/images"
@@ -317,6 +318,68 @@ func buildImageFromDockerfile(ctx context.Context, dockerfilePath string) (strin
 	}
 
 	return r.ID, nil
+}
+
+// BuildDockerfileContent builds an OCI image from a Dockerfile content string using the
+// buildah library directly (no Podman socket required). This is the preferred entry point
+// for NodeForge and other host-side admin tools running with elevated privileges.
+//
+// Parameters:
+//   - ctx: context for the build (must not be nil)
+//   - store: buildah storage store (use NewStore() to create one)
+//   - dockerfileContent: full Dockerfile text as a string
+//   - outputRef: destination image reference, e.g. "10.87.127.18:31500/myimage:latest"
+//
+// Returns:
+//   - imageID: short content-addressable image ID
+//   - digestStr: sha256 digest of the built image manifest (empty string if unavailable)
+//   - err: any build error
+func BuildDockerfileContent(ctx context.Context, store storage.Store, dockerfileContent, outputRef string) (imageID, digestStr string, err error) {
+	if ctx == nil {
+		return "", "", fmt.Errorf("ctx must not be nil")
+	}
+	if store == nil {
+		return "", "", fmt.Errorf("store must not be nil")
+	}
+	if strings.TrimSpace(dockerfileContent) == "" {
+		return "", "", fmt.Errorf("dockerfileContent must not be empty")
+	}
+
+	// Write Dockerfile content to a temp file so imagebuildah can read it.
+	tmpFile, ferr := os.CreateTemp("", "nodeforge-dockerfile-*")
+	if ferr != nil {
+		return "", "", fmt.Errorf("failed to create temp Dockerfile: %w", ferr)
+	}
+	defer func() {
+		_ = os.Remove(tmpFile.Name())
+	}()
+
+	if _, werr := tmpFile.WriteString(dockerfileContent); werr != nil {
+		_ = tmpFile.Close()
+		return "", "", fmt.Errorf("failed to write Dockerfile content: %w", werr)
+	}
+	if cerr := tmpFile.Close(); cerr != nil {
+		return "", "", fmt.Errorf("failed to close temp Dockerfile: %w", cerr)
+	}
+
+	buildOpts := define.BuildOptions{
+		ContextDirectory: ".",
+		PullPolicy:       define.PullIfMissing,
+		Isolation:        define.IsolationOCI,
+		SystemContext:    &imageTypes.SystemContext{},
+		Output:           outputRef,
+		OutputFormat:     buildah.Dockerv2ImageManifest,
+	}
+
+	id, ref, berr := imagebuildah.BuildDockerfiles(ctx, store, buildOpts, tmpFile.Name())
+	if berr != nil {
+		return "", "", fmt.Errorf("imagebuildah.BuildDockerfiles: %w", berr)
+	}
+
+	if ref != nil {
+		digestStr = ref.Digest().String()
+	}
+	return id, digestStr, nil
 }
 
 // newBuilder creates a new builder using the NewBuilder function with default options.

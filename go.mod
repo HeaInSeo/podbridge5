@@ -1,6 +1,6 @@
-module github.com/seoyhaein/podbridge5
+module github.com/HeaInSeo/podbridge5
 
-go 1.22
+go 1.25.5
 
 require (
 	github.com/containers/buildah v1.37.1
