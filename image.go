@@ -8,6 +8,7 @@ import (
 	"github.com/containers/buildah/define"
 	"github.com/containers/buildah/imagebuildah"
 	"github.com/containers/common/pkg/config"
+	"github.com/containers/image/v5/transports/alltransports"
 	imageTypes "github.com/containers/image/v5/types"
 	"github.com/containers/podman/v5/pkg/bindings/images"
 	"github.com/containers/podman/v5/pkg/domain/entities/types"
@@ -380,6 +381,59 @@ func BuildDockerfileContent(ctx context.Context, store storage.Store, dockerfile
 		digestStr = ref.Digest().String()
 	}
 	return id, digestStr, nil
+}
+
+// PushImage pushes a locally built image from the provided storage store to the
+// destination registry reference and returns the pushed manifest digest.
+func PushImage(ctx context.Context, store storage.Store, imageRef, destination string) (string, error) {
+	if ctx == nil {
+		return "", fmt.Errorf("ctx must not be nil")
+	}
+	if store == nil {
+		return "", fmt.Errorf("store must not be nil")
+	}
+	if strings.TrimSpace(imageRef) == "" {
+		return "", fmt.Errorf("imageRef must not be empty")
+	}
+	if strings.TrimSpace(destination) == "" {
+		return "", fmt.Errorf("destination must not be empty")
+	}
+
+	destRef, err := alltransports.ParseImageName(destination)
+	if err != nil {
+		destRef, err = alltransports.ParseImageName("docker://" + destination)
+		if err != nil {
+			return "", fmt.Errorf("parse destination %q: %w", destination, err)
+		}
+	}
+
+	_, manifestDigest, err := buildah.Push(ctx, imageRef, destRef, buildah.PushOptions{
+		Store: store,
+		SystemContext: &imageTypes.SystemContext{
+			DockerInsecureSkipTLSVerify: imageTypes.OptionalBoolTrue,
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("push image %q to %q: %w", imageRef, destination, err)
+	}
+
+	return manifestDigest.String(), nil
+}
+
+// BuildAndPushDockerfileContent builds an image from Dockerfile content and
+// pushes it to the destination registry reference.
+func BuildAndPushDockerfileContent(ctx context.Context, store storage.Store, dockerfileContent, outputRef string) (imageID, digestStr string, err error) {
+	imageID, _, err = BuildDockerfileContent(ctx, store, dockerfileContent, outputRef)
+	if err != nil {
+		return "", "", err
+	}
+
+	digestStr, err = PushImage(ctx, store, outputRef, outputRef)
+	if err != nil {
+		return "", "", err
+	}
+
+	return imageID, digestStr, nil
 }
 
 // newBuilder creates a new builder using the NewBuilder function with default options.
