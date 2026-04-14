@@ -220,36 +220,25 @@ func WriteFolderToVolume(parentCtx context.Context, volumeName, mountPath, hostD
 		return fmt.Errorf("WriteFolderToVolume: check volume existence: %w", err)
 	}
 
-	switch mode {
-	case ModeOverwrite:
-		// OverwriteVolume 내부에서 다시 체크하므로 그대로 호출
+	action, err := planVolumeSetup(mode, exists)
+	if err != nil {
+		return fmt.Errorf("WriteFolderToVolume: volume setup plan: %w", err)
+	}
+
+	switch action {
+	case volumeSetupActionSkip:
+		return nil
+	case volumeSetupActionCreate:
+		vcr, err = CreateVolume(ctx, volumeName, false)
+	case volumeSetupActionReuse:
+		vcr = &types.VolumeConfigResponse{}
+		vcr.Name = volumeName
+	case volumeSetupActionOverwrite:
 		vcr, err = OverwriteVolume(ctx, volumeName, func(c context.Context, n string) (*types.VolumeConfigResponse, error) {
 			return CreateVolume(c, n, false)
 		})
-
-	case ModeSkip:
-		if exists {
-			// 이미 있으면 아무 작업 없이 리턴
-			return nil
-		}
-		vcr, err = CreateVolume(ctx, volumeName, false)
-	// TODO 이 부분은 좀 생각해야 함. 부분적으로 업데이타 가능하고, 가능하다고 해도 해야 하는지 의문임.
-	// TODO 아래 CopyFromArchiveWithOptions 이 메서드에서
-	// opts := &containers.CopyOptions{
-	//    Chown:               &chown,
-	//    Rename:              map[string]string{"/app/logs": "/var/log/myapp"},
-	//    NoOverwriteDirNonDir: nil,  // 덮어쓰기 타입 제어는 기본(false)
-	//} 에서 NoOverwriteDirNonDir 에서 nil 이면 덥어써버림. 일단 이건 생각해서 정리를 해야 함.
-	case ModeUpdate:
-		if !exists {
-			vcr, err = CreateVolume(ctx, volumeName, false)
-		} else {
-			// TODO 확인하자.
-			vcr = &types.VolumeConfigResponse{}
-			vcr.Name = volumeName
-		}
 	default:
-		return fmt.Errorf("WriteFolderToVolume: unknown mode: %d", mode)
+		return fmt.Errorf("WriteFolderToVolume: unsupported volume setup action: %d", action)
 	}
 
 	if err != nil {
