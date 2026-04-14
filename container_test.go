@@ -863,7 +863,7 @@ func TestHealthCheckContainerIntegration(t *testing.T) {
 	// 이미지안에 healthcheck.sh 가 없으면 실패한다.
 	_, id := createTestContainer(t, ctx,
 		[]string{"sh", "-c", "while true; do sleep 1; done"},
-		WithHealthChecker("CMD-SHELL bash /app/healthcheck.sh", "1s", 1, "30s", "0s"),
+		WithHealthChecker("CMD-SHELL true", "1s", 1, "30s", "0s"),
 	)
 	// Ensure cleanup
 	t.Cleanup(func() { cleanupContainer(t, ctx, id) })

@@ -144,6 +144,10 @@ func WithHealthChecker(inCmd, interval string, retries uint, timeout, startPerio
 
 // StartContainer 컨테이너를 만들고 시작함.
 func StartContainer(ctx context.Context, spec *specgen.SpecGenerator) (string, error) {
+	if ctx == nil {
+		return "", errors.New("context is nil")
+	}
+
 	if spec == nil {
 		return "", errors.New("spec is nil")
 	}
@@ -272,15 +276,15 @@ func handleExistingContainer(ctx context.Context, containerName string) (*Create
 		status = Paused
 	case s.Dead:
 		status = Dead
+	case strings.EqualFold(s.Status, "created") || strings.EqualFold(s.Status, "configured"):
+		status = Created
 	case s.ExitCode >= 0:
-		// 프로세스가 종료된 상태
 		if s.ExitCode == 0 {
 			status = Exited
 		} else {
 			status = ExitedErr
 		}
 	default:
-		// 생성만 되고 아직 시작되지 않은 상태
 		status = Created
 	}
 

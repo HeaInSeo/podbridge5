@@ -2,6 +2,7 @@ package podbridge5
 
 import (
 	"archive/tar"
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -122,12 +123,7 @@ func extractVolumeAsTarMap(t *testing.T, ctx context.Context, volumeName, mountP
 	spec, err := NewSpec(
 		WithImageName("docker.io/library/alpine:latest"),
 		WithName("verify-"+volumeName),
-		WithCommand([]string{
-			"sh", "-c",
-			// tar 가 파일 없을 때 0 이 아닌 코드 반환하는 것을 피하려면 || true 유지
-			"cd \"$1\" && tar -cf - . || true",
-			"sh", mountPath,
-		}),
+		WithCommand([]string{"sh", "-c", "mkdir -p \"$1\" && tail -f /dev/null", "sh", mountPath}),
 		WithNamedVolume(volumeName, mountPath, ""),
 	)
 	if err != nil {
@@ -140,49 +136,45 @@ func extractVolumeAsTarMap(t *testing.T, ctx context.Context, volumeName, mountP
 	}
 	cid := cr.ID
 	defer func() {
-		// 강제 제거(테스트 환경에서는 강제 제거가 흔히 안전)
-		_, _ = containers.Remove(ctx, cid, &containers.RemoveOptions{Force: boolPtr(true)})
+		ignore := true
+		force := true
+		vols := true
+		_, _ = containers.Remove(ctx, cid, &containers.RemoveOptions{Force: &force, Volumes: &vols, Ignore: &ignore})
 	}()
 
 	if err := containers.Start(ctx, cid, nil); err != nil {
 		return nil, fmt.Errorf("start container: %w", err)
 	}
 
-	// stdout 파이프 구성
-	pr, pw := io.Pipe()
-
-	// Attach 고루틴: stdout= pw, stderr 무시(필요하면 별도 writer)
-	attachErrCh := make(chan error, 1)
-	go func() {
-		defer func() {
-			_ = pw.Close()
-		}()
-		// stdin=nil, stdout=pw, stderr=nil, attachReady=nil
-		aerr := containers.Attach(ctx, cid, nil, pw, nil, nil, nil)
-		attachErrCh <- aerr
-	}()
+	var outBuf bytes.Buffer
+	copyFunc, err := containers.CopyToArchive(ctx, cid, mountPath, &outBuf)
+	if err != nil {
+		return nil, fmt.Errorf("copy to archive init: %w", err)
+	}
+	if err := copyFunc(); err != nil {
+		return nil, fmt.Errorf("copy to archive: %w", err)
+	}
 
 	out := make(map[string]string)
-	tr := tar.NewReader(pr)
-
+	tr := tar.NewReader(bytes.NewReader(outBuf.Bytes()))
 	for {
 		hdr, e := tr.Next()
 		if e == io.EOF {
 			break
 		}
 		if e != nil {
-			// Attach 고루틴 에러와 구분 위해 wrap
 			return nil, fmt.Errorf("tar read: %w", e)
 		}
 		if hdr.FileInfo().IsDir() {
 			continue
 		}
-		name := hdr.Name
+
+		name := strings.TrimPrefix(hdr.Name, "./")
+		name = strings.TrimPrefix(name, strings.TrimPrefix(mountPath, "/")+"/")
+		name = strings.TrimPrefix(name, "/")
 		if name == "" || name == "." {
 			continue
 		}
-		// 경로 정규화 (./ 제거)
-		name = strings.TrimPrefix(name, "./")
 
 		data, e := io.ReadAll(tr)
 		if e != nil {
@@ -191,24 +183,6 @@ func extractVolumeAsTarMap(t *testing.T, ctx context.Context, volumeName, mountP
 		sum := sha256.Sum256(data)
 		out[name] = hex.EncodeToString(sum[:])
 	}
-
-	// Attach 결과 확인 (가능한 EOF 후 이미 끝났을 것)
-	select {
-	case aerr := <-attachErrCh:
-		if aerr != nil {
-			// tar 읽기 끝났더라도 attach 중 에러(컨테이너 조기 종료 등) 노출
-			return nil, fmt.Errorf("attach: %w", aerr)
-		}
-	default:
-		// 아직 안 끝났다면 기다림
-		aerr := <-attachErrCh
-		if aerr != nil {
-			return nil, fmt.Errorf("attach(wait): %w", aerr)
-		}
-	}
-
-	// 컨테이너 종료 상태 기다리기 (에러는 참고용)
-	_, _ = containers.Wait(ctx, cid, nil)
 
 	return out, nil
 }

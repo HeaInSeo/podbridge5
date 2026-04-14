@@ -1,72 +1,197 @@
-## TODO
-~~- 좀 쓸데 없는거 정리하자. 정신 없다.  volume 통합하고 정신 없는 거 정리하자.~~    
-- directory.md 관련해서 소스 수정 해야함 (중요.)  
-~~- container.go 테스트 파일 작성~~  
-~~- container 생성까지 작성. 테스트 파일 작성 필요.~~ (성공) 
-- policy.json 과 REGISTRIES.CONF 디폴트로 잡았는데 개발을 위해서 이거 세부적으로 잡아주어야 함. 
-~~- healthcheck 구문 테스트 필요. shellscript 집어넣어야 함.~~  
-~~- defer 구문 기억해내자.~~  
-~~- buildah 관련해서 buildah 도 필요한지 살펴본다. image.go 같은 경우는 이미지 빌드에 관련된 부분이라서 buildah 를 활용해야 한다.~~ 
-~~- volume 관련해서는 notion 확인하고 진행하자.~~  
-~~- 이거 완료되면 podbridge 에 통합할 예정임.  v4 폴더와 v5 폴더 만들어서 적용함. 시간날때 해두자.~~  
-- Run 메서드 여러개 돌릴때 문제될 수 있음. 컨테이너 여러개 만들때 문제될 수 있음. Run 은 빨리 종료시켜야함.
-~~- healthcheck 는 goroutine 으로 만들어 두고, 이것을 모니터링 하는 것도 goroutine 으로 하는 것이 좋을 것 같다.~~  
-~~- healthcheck 같은 경우는 각 컨테이너의 상태를 확인할 수 있는 모니터링 메서드를 하나 만들어서 여기서 관리하도록 하는 방향으로 간다.~~  
-- Run 메서드는 바로 실행 종료 할 수 있도록 
-~~- healthcheck.sh 최적화 시킨고 문서화 한다.~~ 
-- 문서화는 별도로 진행한다.
-- image.go 정리하고 문서화해 놓는다.
-~~- chain 형태로 메서드를 연결해서 사용하는 방식으로 했는데 이렇게 하지 말고 오류가 발생했을때 명확히 알 수 있는 형태로 하자.~~  
-- 시간 제한을 거는 문제 구현 해야함.
-~~- heathcheck_new.sh 로 해서 테스트 해보고 수동으로 했을때는 정상작동하는데 테스트 할때 않되는 이유 찾자.~~
-- 각 단계 즉 컨테이너를 실행시켜서 확인할 수 있는 dry-run 기능을 넣어 주어야 함.  
-- golang 최신 버전으로 업데이트 하고 go.mod 에서 취약성이 있는 디펜던시 업데이트 해서 취약성 확인하자.  
+# podbridge5
 
-## 생각하기
-~~- 지금 2초 후에 헬스체크를 ㅎ고 있는데 이럴 경우 2초 보다 일찍 끝나는 것은 헬스체크를 하지 않는다.~~  
-~~- 그리고 이러한 시간은 일단 고정으로 잡아 두었다.~~
-~~- 버그 해결해야함.~~
-~~- healthcheck 같은 경우는 여러번 반복적으로 실행 될 수 있다. 이거 유념해서 코드를 다시 살펴봐야 한다.~~ 
-~~- 그리고 이건 빠르게 실행해야 하는 부분이다.~~
-~~- 에러를 어떻게 처리하는지 에러 발생하는 script 를 만들어 줘서 하나 하나 다 테스트 해야하고 이상한 125 에러 나오던데 이거 뭔지 파악해야 한다.~~ 
-## image.go
-~~- 기본 메서드 와 여기서 healthcheck.sh 를 넣는 버전과 사용자의 dockerfile 을 받아서 이미지 만들어주는 것.~~  
-~~- 사용자 이미지에서 healthcheck.sh 를 넣어서 이미지를 만들어 주는 것 필요.~~  
-~~- healthcheck.sh 등을 넣어서 만들어준 이미지는 내부에서만 사용되는 이미지임.(영업비밀. notion 참고.)~~  
-- etcd conf 확인해서, podman 살아있는지 죽었는지 확인하고 죽으면 살리는 루틴 생각해보자.(진행중)
-~~- storage 관련 conf 파일 작성해주거나 작성 루틴 만들어서 podman 오류 없애야 함.~~  또 에러남. 젠장.
-~~- 일단 buildah version 과 podman info 에서 나오는 버전을 맞추자. buildah 버전을 맞춰서 재설치 하자.~~  
-- ~~CreateDefaultImage~~ CreateImageWithDockerfile 수정해야 함. alpine 으로 했을때는 Dockerfile.alpine.executor 와 동일 해야 함.
-~~- 이미지를 만들때 CMD ["/bin/sh", "-c", "/app/executor.sh"] 이런 식으로 만들어 주어야 함.~~ 
-- 주요한 테스트가 끝나면 db 에 넣는 것을 생각 해야함.  
-- executor.go 분리하자.
-- 파일읽고 쓰기시에 한번에 메모리 올려서 하는지 스트림으로 하는지 파악해야 함. 상세히 살펴봐야 함.  
+English follows the Korean section.
 
-## container.go
-- 런할때는 좀더 생각해야 함. 떨어지는 이미지나 필요한 이미지를 넣어주는 것을 생각해야 함.  
+## 개요
 
-## 컨테이너 테스트 
-- ubuntu, centos 및 기타 다른 os 로 테스트 진행
-- healthcheck.sh 권한 설정 빠져 있음.
-- 클러스터나 작업하는 노드가 완전 폐쇄형일 경우 Dockerfile 구성을 달리 해야함. (대단히 중요. 이 경우 개방형과 폐쇄형 둘다 구분해서 만들어 줘야 함.)  
-- executor.sh, healthcheck.sh 같은 경우는 외부에 노출 시키지 않고 이런 것들이 들어간 이미지 역시 외부 노출 시키지 않는다.
-- 별도의 레지스트리는 두지만 여기에 들어가는 것은 사용자 이미지 이지 내부적으로 쓰이는 이미지(위에서 언급한 이미지)는 아니다.  
-- error 코드 정리 해야함.  
-- executor.go 수정해 주어야 함.
-~~- executor.sh 코드 확인하자. 테스트 진행하자.~~
-~~- executor.sh, healthcheck.sh 코드 단순화 install.sh 하나 만들어 줌.~~  
-- 메서드들을 통일성있게 구성하자. config.methodA 이런식으로 환경설정이 필요한 경우는 이렇게 구성하자.
-## 확인하자.
-https://github.com/containers/buildah/blob/main/docs/tutorials/04-include-in-your-build-tool.md
+`podbridge5`는 컨테이너 런타임, 이미지 빌드, 이미지 push 흐름을 다루는 Go 라이브러리입니다.
+이 저장소는 Kubernetes 오케스트레이션 계층 아래에 있으므로, `NodeForge` 같은 상위 프로젝트와는 다른 방식으로 검증하는 편이 맞습니다.
 
-```
-Supplying defaults for Run()
-If you need to run a command as part of the build, you'll have to dig up a couple of defaults that aren't picked up automatically:
+## 검증 방향
 
-conf, err := config.Default()
-capabilitiesForRoot, err := conf.Capabilities("root", nil, nil)
-isolation, err := parse.IsolationOption("")
-```
+검증은 두 경로로 나눕니다.
 
-### 잡담.
-https://www.a-swe.net/
+### 1. 기본 개발 경로
+
+현재 호스트에서 빠르게 확인하는 경로입니다.
+
+- `make test`
+- `make test-runtime`
+- `make test-runtime-integration`
+- `make runtime-env-check`
+
+이 경로는 코드 수정, 경량 검증, 로컬 정리에 적합합니다. 다만 `buildah`, `containers/storage`, `containers/image` 의존성 때문에 호스트 패키지가 없으면 전체 테스트가 바로 되지 않을 수 있습니다.
+
+### 2. 원격 런타임 VM 경로
+
+실제 런타임 의존성 검증은 `100.123.80.48` 장비의 Multipass에서 ephemeral VM을 만들어 수행합니다.
+
+- 목적 장비: `100.123.80.48`
+- 사용자: `seoy`
+- VM 이름 기본값: `podbridge5-dev`
+- 권장 OS: Ubuntu 24.04
+- 검증 대상:
+  - `buildah`
+  - `fuse-overlayfs`
+  - `pkg-config` / `gpgme`
+  - `btrfs` headers
+  - system `podman` socket
+  - storage 초기화
+  - 이미지 build / push 흐름
+
+이 경로는 `multipass-k8s-lab` 클러스터와 분리합니다.
+
+- `multipass-k8s-lab`: `NodeForge` Kubernetes end-to-end 검증
+- `podbridge5-dev`: `podbridge5` 런타임 검증
+
+## 원격 VM 자동화
+
+원격 VM 테스트는 Makefile이 자동으로 처리합니다.
+
+`make vm-test-runtime` 실행 순서:
+
+1. 원격 장비에서 테스트용 VM 생성
+2. 필요한 패키지와 system `podman` socket 준비
+3. 현재 로컬 `podbridge5` 워크트리를 tar.gz로 묶어 원격 호스트로 업로드
+4. 원격 호스트에서 `multipass transfer`로 fresh VM에 동기화
+5. VM 안에서 `go test ./...` 실행
+6. 테스트 종료 후 VM 삭제
+
+`make vm-test-runtime-integration`도 같은 흐름으로 동작하며, integration 태그 테스트를 수행합니다.
+
+중요한 점은 이 경로가 항상 **clean VM 기준 재현성**을 목표로 한다는 것입니다.
+환경 찌꺼기 때문에 생기는 문제라면 VM을 새로 만들고 다시 돌렸을 때 사라져야 합니다.
+반대로 fresh VM에서도 계속 재현되면, 그 문제는 호스트 찌꺼기가 아니라 코드나 런타임 초기화 경로에 있을 가능성이 큽니다.
+
+## 로그 수집
+
+원격 VM 테스트 출력은 콘솔에 표시되는 동시에 로컬 로그 파일로 저장됩니다.
+
+- `artifacts/vm-test-runtime.log`
+- `artifacts/vm-test-runtime-integration.log`
+
+로그에는 VM lifecycle, 원격 준비 단계, worktree sync, `go test` stdout/stderr가 함께 들어갑니다.
+
+## 사용 방법
+
+필수 환경 변수:
+
+- `REMOTE_PASS`: 원격 장비 SSH 비밀번호
+
+자주 쓰는 타깃:
+
+- `make vm-test-runtime REMOTE_PASS=...`
+- `make vm-test-runtime-integration REMOTE_PASS=...`
+- `make vm-create-runtime REMOTE_PASS=...`
+- `make vm-prepare-runtime REMOTE_PASS=...`
+- `make vm-sync-runtime REMOTE_PASS=...`
+- `make vm-delete-runtime REMOTE_PASS=...`
+
+기본값으로 현재 로컬 워크트리(`$(CURDIR)`)가 VM에 동기화됩니다.
+필요하면 `PODBRIDGE5_LOCAL_REPO=/path/to/repo`로 명시적으로 바꿀 수 있습니다.
+
+## 참고
+
+이 저장소의 런타임 검증은 GitHub Actions를 기준으로 설계하지 않습니다.
+중첩 가상화와 런타임 의존성 때문에, 현재 기준으로는 원격 장비의 Multipass VM을 사용하는 방식이 더 단순하고 안정적입니다.
+
+기존 README 초안은 [backup/Readme.legacy.md](backup/Readme.legacy.md)에 백업해 두었습니다.
+
+---
+
+# podbridge5
+
+## Overview
+
+`podbridge5` is a Go library for container runtime behavior, image builds, and image pushes.
+Because it sits below the Kubernetes orchestration layer, it should be validated differently from upper-layer projects such as `NodeForge`.
+
+## Validation Model
+
+Validation is split into two paths.
+
+### 1. Base development path
+
+This is the fast path on the current host.
+
+- `make test`
+- `make test-runtime`
+- `make test-runtime-integration`
+- `make runtime-env-check`
+
+This path is useful for code changes, lightweight checks, and local maintenance. Since the repository still depends directly on `buildah`, `containers/storage`, and `containers/image`, a full test run may still require host packages to be installed.
+
+### 2. Remote runtime VM path
+
+Runtime-dependent validation runs on an ephemeral Multipass VM created on `100.123.80.48`.
+
+- target machine: `100.123.80.48`
+- user: `seoy`
+- default VM name: `podbridge5-dev`
+- recommended OS: Ubuntu 24.04
+- validated components:
+  - `buildah`
+  - `fuse-overlayfs`
+  - `pkg-config` / `gpgme`
+  - `btrfs` headers
+  - system `podman` socket
+  - storage initialization
+  - image build / push flows
+
+This stays separate from the `multipass-k8s-lab` cluster.
+
+- `multipass-k8s-lab`: Kubernetes end-to-end validation for `NodeForge`
+- `podbridge5-dev`: runtime validation for `podbridge5`
+
+## Remote VM Automation
+
+The Makefile handles the remote runtime VM lifecycle automatically.
+
+`make vm-test-runtime` does the following:
+
+1. creates a fresh test VM on the remote machine
+2. installs required packages and prepares the system `podman` socket
+3. archives the current local `podbridge5` worktree and uploads it to the remote host
+4. syncs that archive into the fresh VM with `multipass transfer`
+5. runs `go test ./...` inside the VM
+6. deletes the VM after the test finishes
+
+`make vm-test-runtime-integration` uses the same lifecycle and runs the integration-tag path.
+
+The key property is **clean-VM reproducibility**.
+If a failure only exists because of environment residue, deleting the runtime VM and running again should make it disappear.
+If it still reproduces on a fresh VM, the problem is more likely in code or runtime initialization rather than stale host state.
+
+## Log Collection
+
+Remote VM test output is shown in the console and also stored in local log files.
+
+- `artifacts/vm-test-runtime.log`
+- `artifacts/vm-test-runtime-integration.log`
+
+The logs include the VM lifecycle, remote preparation steps, worktree sync, and `go test` stdout/stderr.
+
+## Usage
+
+Required environment variable:
+
+- `REMOTE_PASS`: SSH password for the remote machine
+
+Common targets:
+
+- `make vm-test-runtime REMOTE_PASS=...`
+- `make vm-test-runtime-integration REMOTE_PASS=...`
+- `make vm-create-runtime REMOTE_PASS=...`
+- `make vm-prepare-runtime REMOTE_PASS=...`
+- `make vm-sync-runtime REMOTE_PASS=...`
+- `make vm-delete-runtime REMOTE_PASS=...`
+
+By default, the current local worktree (`$(CURDIR)`) is synced into the VM.
+You can override it explicitly with `PODBRIDGE5_LOCAL_REPO=/path/to/repo`.
+
+## Note
+
+This runtime validation path is not designed around GitHub Actions.
+Given nested virtualization and runtime package dependencies, the current preferred path is a remote Multipass VM on the lab machine.
+
+The previous README draft has been backed up to [backup/Readme.legacy.md](backup/Readme.legacy.md).
