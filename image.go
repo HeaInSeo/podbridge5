@@ -363,14 +363,7 @@ func BuildDockerfileContent(ctx context.Context, store storage.Store, dockerfile
 		return "", "", fmt.Errorf("failed to close temp Dockerfile: %w", cerr)
 	}
 
-	buildOpts := define.BuildOptions{
-		ContextDirectory: ".",
-		PullPolicy:       define.PullIfMissing,
-		Isolation:        define.IsolationOCI,
-		SystemContext:    &imageTypes.SystemContext{},
-		Output:           outputRef,
-		OutputFormat:     buildah.Dockerv2ImageManifest,
-	}
+	buildOpts := DefaultImageBuildOptions(outputRef)
 
 	id, ref, berr := imagebuildah.BuildDockerfiles(ctx, store, buildOpts, tmpFile.Name())
 	if berr != nil {
@@ -399,12 +392,14 @@ func PushImage(ctx context.Context, store storage.Store, imageRef, destination s
 		return "", fmt.Errorf("destination must not be empty")
 	}
 
-	destRef, err := alltransports.ParseImageName(destination)
+	normalizedDestination, err := NormalizePushDestination(destination)
 	if err != nil {
-		destRef, err = alltransports.ParseImageName("docker://" + destination)
-		if err != nil {
-			return "", fmt.Errorf("parse destination %q: %w", destination, err)
-		}
+		return "", err
+	}
+
+	destRef, err := alltransports.ParseImageName(normalizedDestination)
+	if err != nil {
+		return "", fmt.Errorf("parse destination %q: %w", normalizedDestination, err)
 	}
 
 	_, manifestDigest, err := buildah.Push(ctx, imageRef, destRef, buildah.PushOptions{
@@ -439,25 +434,22 @@ func BuildAndPushDockerfileContent(ctx context.Context, store storage.Store, doc
 // newBuilder creates a new builder using the NewBuilder function with default options.
 // TODO 좀더 study 필요. 옵션들에 대해서.
 func newBuilder(ctx context.Context, store storage.Store, idName string) (*buildah.Builder, error) {
-	return NewBuilder(ctx, store,
-		WithFromImage(idName),
-		WithIsolation(define.IsolationOCI),
-		WithCommonBuildOptions(nil),
-		WithSystemContext(nil),
-		WithNetworkConfiguration(buildah.NetworkDefault),
-		WithFormat(buildah.Dockerv2ImageManifest),
-		WithCapabilities())
+	caps, err := capabilities()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get capabilities: %w", err)
+	}
+
+	builderOpts, err := newBuilderOptions(idName, caps)
+	if err != nil {
+		return nil, err
+	}
+
+	return buildah.NewBuilder(ctx, store, *builderOpts)
 }
 
 // newAddAndCopyOptions creates default add and copy options.
 func newAddAndCopyOptions() buildah.AddAndCopyOptions {
-	return NewAddAndCopyOptions(
-		WithChmod("0o755"),
-		WithChown("0:0"),
-		WithHasher(digester.Hash()),
-		WithContextDir("."),
-		WithDryRun(false),
-	)
+	return newDefaultAddAndCopyOptions(digester.Hash())
 }
 
 // ------------------------------------------------------
