@@ -4,14 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/containers/image/v5/manifest"
 	"github.com/containers/podman/v5/libpod/define"
 	"github.com/containers/podman/v5/pkg/bindings/containers"
 	"github.com/containers/podman/v5/pkg/bindings/images"
 	"github.com/containers/podman/v5/pkg/specgen"
 	"github.com/seoyhaein/utils"
 	"strings"
-	"time"
 )
 
 type ContainerStatus int
@@ -131,7 +129,7 @@ func WithCommand(cmd []string) ContainerOptions {
 // WithHealthChecker healthcheck 설정에 문제가 발생하면 에러를 반환
 func WithHealthChecker(inCmd, interval string, retries uint, timeout, startPeriod string) ContainerOptions {
 	// 한 번만 파싱/검증
-	hc, err := setHealthChecker(inCmd, interval, retries, timeout, startPeriod)
+	hc, err := ParseHealthcheckConfig(inCmd, interval, retries, timeout, startPeriod)
 	return func(spec *specgen.SpecGenerator) error {
 		if err != nil {
 			// 옵션 생성 시점에 실패 원인을 그대로 반환
@@ -293,57 +291,4 @@ func handleExistingContainer(ctx context.Context, containerName string) (*Create
 		ID:     info.ID,
 		Status: status,
 	}, nil
-}
-
-func setHealthChecker(inCmd, interval string, retries uint, timeout, startPeriod string) (*manifest.Schema2HealthConfig, error) {
-	// inCmd 는 항상 "CMD-SHELL /app/healthcheck.sh" 형식으로만 들어온다고 가정
-	cmdArr := strings.Fields(inCmd) // 공백을 기준으로 명령어를 분리
-
-	// 명령어가 "CMD-SHELL"로 시작하는지 확인
-	if len(cmdArr) < 2 || cmdArr[0] != "CMD-SHELL" {
-		return nil, errors.New("invalid command format: must start with CMD-SHELL")
-	}
-
-	// healthcheck 는 Test 필드가 명령어 배열로 되어 있어야 함
-	hc := manifest.Schema2HealthConfig{
-		Test: cmdArr,
-	}
-
-	// Interval 설정 (disable 로 설정되면 0으로 처리)
-	if interval == "disable" {
-		interval = "0"
-	}
-	intervalDuration, err := time.ParseDuration(interval)
-	if err != nil {
-		return nil, fmt.Errorf("invalid healthcheck-interval: %w", err)
-	}
-	hc.Interval = intervalDuration
-
-	// Retries 는 1 이상이어야 함
-	if retries < 1 {
-		return nil, errors.New("healthcheck-retries must be greater than 0")
-	}
-	hc.Retries = int(retries)
-
-	// Timeout 설정 (최소 1초 이상이어야 함)
-	timeoutDuration, err := time.ParseDuration(timeout)
-	if err != nil {
-		return nil, fmt.Errorf("invalid healthcheck-timeout: %w", err)
-	}
-	if timeoutDuration < time.Second {
-		return nil, errors.New("healthcheck-timeout must be at least 1 second")
-	}
-	hc.Timeout = timeoutDuration
-
-	// StartPeriod 설정 (0초 이상이어야 함)
-	startPeriodDuration, err := time.ParseDuration(startPeriod)
-	if err != nil {
-		return nil, fmt.Errorf("invalid healthcheck-start-period: %w", err)
-	}
-	if startPeriodDuration < 0 {
-		return nil, errors.New("healthcheck-start-period must be 0 seconds or greater")
-	}
-	hc.StartPeriod = startPeriodDuration
-
-	return &hc, nil
 }

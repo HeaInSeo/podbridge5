@@ -202,7 +202,7 @@ func RunContainerWithStats(
 		WithImageName(internalImageName),
 		WithName(containerName),
 		WithTerminal(tty),
-		WithHealthChecker("CMD-SHELL bash /app/healthcheck.sh", "1s", 1, "30s", "0s"),
+		WithHealthChecker(DefaultHealthcheckCommand(), "1s", 1, "30s", "0s"),
 		WithCPULimits(cpuQuota, cpuPeriod, cpuShares), // 입력받은 cpuQuota, cpuPeriod, cpuShares 사용
 		WithMemoryLimit(memoryLimit),                  // 입력받은 memoryLimit 사용
 		WithOOMScoreAdj(oomScore),                     // 입력받은 oomScore 사용

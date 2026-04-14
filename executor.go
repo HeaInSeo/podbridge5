@@ -36,8 +36,8 @@ func GenerateExecutor(path, fileName, userScriptPath string) (*os.File, *string,
 	scriptContent := fmt.Sprintf(`#!/usr/bin/env bash
 set -euo pipefail
 
-RESULT_LOG="/app/result.log"
-STATUS_LOG="/app/exit_code.log"
+RESULT_LOG="%s"
+STATUS_LOG="%s"
 LOCK_FILE="${STATUS_LOG}.lock"
 
 # 로그 초기화
@@ -84,7 +84,7 @@ else
     echo "Task completed successfully" | tee -a "$RESULT_LOG"
 fi
 
-exit "${EXIT_CODE}"`, userScriptPath, userScriptPath, userScriptPath, userScriptPath, userScriptPath, userScriptPath)
+exit "${EXIT_CODE}"`, ContainerResultLogPath, ContainerExitCodeLogPath, userScriptPath, userScriptPath, userScriptPath, userScriptPath, userScriptPath, userScriptPath)
 
 	if _, writeErr := tmpFile.Write([]byte(scriptContent)); writeErr != nil {
 		if closeErr := tmpFile.Close(); closeErr != nil {

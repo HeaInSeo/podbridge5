@@ -145,7 +145,7 @@ func TestCreateContainer(t *testing.T) {
 	t.Logf("created container %s (%s)", res.Name, res.ID)
 }
 
-func TestSetHealthChecker(t *testing.T) {
+func TestParseHealthcheckConfigLegacyWrapper(t *testing.T) {
 	tests := []struct {
 		name        string
 		inCmd       string
@@ -158,14 +158,14 @@ func TestSetHealthChecker(t *testing.T) {
 	}{
 		{
 			name:        "Valid healthcheck with default settings",
-			inCmd:       "CMD-SHELL /app/healthcheck.sh",
+			inCmd:       DefaultHealthcheckCommand(),
 			interval:    "30s",
 			retries:     3,
 			timeout:     "5s",
 			startPeriod: "0s",
 			expectErr:   false,
 			expected: &manifest.Schema2HealthConfig{
-				Test:        []string{"CMD-SHELL", "/app/healthcheck.sh"},
+				Test:        []string{"CMD-SHELL", ContainerHealthcheckPath},
 				Interval:    30 * time.Second,
 				Retries:     3,
 				Timeout:     5 * time.Second,
@@ -174,14 +174,14 @@ func TestSetHealthChecker(t *testing.T) {
 		},
 		{
 			name:        "Healthcheck with disabled interval",
-			inCmd:       "CMD-SHELL /app/healthcheck.sh",
+			inCmd:       DefaultHealthcheckCommand(),
 			interval:    "disable",
 			retries:     2,
 			timeout:     "10s",
 			startPeriod: "5s",
 			expectErr:   false,
 			expected: &manifest.Schema2HealthConfig{
-				Test:        []string{"CMD-SHELL", "/app/healthcheck.sh"},
+				Test:        []string{"CMD-SHELL", ContainerHealthcheckPath},
 				Interval:    0,
 				Retries:     2,
 				Timeout:     10 * time.Second,
@@ -190,7 +190,7 @@ func TestSetHealthChecker(t *testing.T) {
 		},
 		{
 			name:        "Invalid command (missing CMD-SHELL)",
-			inCmd:       "/app/healthcheck.sh",
+			inCmd:       ContainerHealthcheckPath,
 			interval:    "30s",
 			retries:     3,
 			timeout:     "5s",
@@ -199,7 +199,7 @@ func TestSetHealthChecker(t *testing.T) {
 		},
 		{
 			name:        "Invalid interval format",
-			inCmd:       "CMD-SHELL /app/healthcheck.sh",
+			inCmd:       DefaultHealthcheckCommand(),
 			interval:    "abc",
 			retries:     3,
 			timeout:     "5s",
@@ -208,7 +208,7 @@ func TestSetHealthChecker(t *testing.T) {
 		},
 		{
 			name:        "Invalid timeout (less than 1 second)",
-			inCmd:       "CMD-SHELL /app/healthcheck.sh",
+			inCmd:       DefaultHealthcheckCommand(),
 			interval:    "30s",
 			retries:     3,
 			timeout:     "500ms",
@@ -217,7 +217,7 @@ func TestSetHealthChecker(t *testing.T) {
 		},
 		{
 			name:        "StartPeriod less than 0",
-			inCmd:       "CMD-SHELL /app/healthcheck.sh",
+			inCmd:       DefaultHealthcheckCommand(),
 			interval:    "30s",
 			retries:     3,
 			timeout:     "5s",
@@ -226,7 +226,7 @@ func TestSetHealthChecker(t *testing.T) {
 		},
 		{
 			name:        "Invalid retries (zero)",
-			inCmd:       "CMD-SHELL /app/healthcheck.sh",
+			inCmd:       DefaultHealthcheckCommand(),
 			interval:    "30s",
 			retries:     0,
 			timeout:     "5s",
@@ -237,7 +237,7 @@ func TestSetHealthChecker(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := setHealthChecker(tc.inCmd, tc.interval, tc.retries, tc.timeout, tc.startPeriod)
+			got, err := ParseHealthcheckConfig(tc.inCmd, tc.interval, tc.retries, tc.timeout, tc.startPeriod)
 			if tc.expectErr {
 				if err == nil {
 					t.Fatalf("expected error but got none")
