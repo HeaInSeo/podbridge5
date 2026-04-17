@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"github.com/containers/buildah"
 	"github.com/containers/buildah/define"
-	"github.com/containers/buildah/imagebuildah"
 	"github.com/containers/common/pkg/config"
-	"github.com/containers/image/v5/transports/alltransports"
 	imageTypes "github.com/containers/image/v5/types"
 	"github.com/containers/podman/v5/pkg/bindings/images"
 	"github.com/containers/podman/v5/pkg/domain/entities/types"
@@ -336,99 +334,28 @@ func buildImageFromDockerfile(ctx context.Context, dockerfilePath string) (strin
 //   - digestStr: sha256 digest of the built image manifest (empty string if unavailable)
 //   - err: any build error
 func BuildDockerfileContent(ctx context.Context, store storage.Store, dockerfileContent, outputRef string) (imageID, digestStr string, err error) {
-	if ctx == nil {
-		return "", "", fmt.Errorf("ctx must not be nil")
-	}
 	if store == nil {
 		return "", "", fmt.Errorf("store must not be nil")
 	}
-	if strings.TrimSpace(dockerfileContent) == "" {
-		return "", "", fmt.Errorf("dockerfileContent must not be empty")
-	}
-
-	// Write Dockerfile content to a temp file so imagebuildah can read it.
-	tmpFile, ferr := os.CreateTemp("", "nodeforge-dockerfile-*")
-	if ferr != nil {
-		return "", "", fmt.Errorf("failed to create temp Dockerfile: %w", ferr)
-	}
-	defer func() {
-		_ = os.Remove(tmpFile.Name())
-	}()
-
-	if _, werr := tmpFile.WriteString(dockerfileContent); werr != nil {
-		_ = tmpFile.Close()
-		return "", "", fmt.Errorf("failed to write Dockerfile content: %w", werr)
-	}
-	if cerr := tmpFile.Close(); cerr != nil {
-		return "", "", fmt.Errorf("failed to close temp Dockerfile: %w", cerr)
-	}
-
-	buildOpts := DefaultImageBuildOptions(outputRef)
-
-	id, ref, berr := imagebuildah.BuildDockerfiles(ctx, store, buildOpts, tmpFile.Name())
-	if berr != nil {
-		return "", "", fmt.Errorf("imagebuildah.BuildDockerfiles: %w", berr)
-	}
-
-	if ref != nil {
-		digestStr = ref.Digest().String()
-	}
-	return id, digestStr, nil
+	return buildDockerfileContentWithRuntime(ctx, realImageBuildRuntime{}, store, dockerfileContent, outputRef)
 }
 
 // PushImage pushes a locally built image from the provided storage store to the
 // destination registry reference and returns the pushed manifest digest.
 func PushImage(ctx context.Context, store storage.Store, imageRef, destination string) (string, error) {
-	if ctx == nil {
-		return "", fmt.Errorf("ctx must not be nil")
-	}
 	if store == nil {
 		return "", fmt.Errorf("store must not be nil")
 	}
-	if strings.TrimSpace(imageRef) == "" {
-		return "", fmt.Errorf("imageRef must not be empty")
-	}
-	if strings.TrimSpace(destination) == "" {
-		return "", fmt.Errorf("destination must not be empty")
-	}
-
-	normalizedDestination, err := NormalizePushDestination(destination)
-	if err != nil {
-		return "", err
-	}
-
-	destRef, err := alltransports.ParseImageName(normalizedDestination)
-	if err != nil {
-		return "", fmt.Errorf("parse destination %q: %w", normalizedDestination, err)
-	}
-
-	_, manifestDigest, err := buildah.Push(ctx, imageRef, destRef, buildah.PushOptions{
-		Store: store,
-		SystemContext: &imageTypes.SystemContext{
-			DockerInsecureSkipTLSVerify: imageTypes.OptionalBoolTrue,
-		},
-	})
-	if err != nil {
-		return "", fmt.Errorf("push image %q to %q: %w", imageRef, destination, err)
-	}
-
-	return manifestDigest.String(), nil
+	return pushImageWithRuntime(ctx, realImageBuildRuntime{}, store, imageRef, destination)
 }
 
 // BuildAndPushDockerfileContent builds an image from Dockerfile content and
 // pushes it to the destination registry reference.
 func BuildAndPushDockerfileContent(ctx context.Context, store storage.Store, dockerfileContent, outputRef string) (imageID, digestStr string, err error) {
-	imageID, _, err = BuildDockerfileContent(ctx, store, dockerfileContent, outputRef)
-	if err != nil {
-		return "", "", err
+	if store == nil {
+		return "", "", fmt.Errorf("store must not be nil")
 	}
-
-	digestStr, err = PushImage(ctx, store, outputRef, outputRef)
-	if err != nil {
-		return "", "", err
-	}
-
-	return imageID, digestStr, nil
+	return buildAndPushDockerfileContentWithRuntime(ctx, realImageBuildRuntime{}, store, dockerfileContent, outputRef)
 }
 
 // newBuilder creates a new builder using the NewBuilder function with default options.

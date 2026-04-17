@@ -152,6 +152,29 @@ English follows the Korean section.
 
 - 이번 턴에서 구현 진행
 
+### 6. Image build/push runtime helper 분리
+
+다음으로 `image.go`의 build/push 핵심 경로를 별도 runtime helper 레이어로 옮깁니다.
+이 단계의 목적은 `BuildDockerfileContent`, `PushImage`, `BuildAndPushDockerfileContent`가 흐름과 입력 검증에 집중하고,
+실제 buildah/imagebuildah 호출은 더 얇은 경계 뒤로 밀어 넣는 것입니다.
+
+대상:
+
+- `image.go`
+- 신규 runtime helper
+- 신규 unit test
+
+완료 기준:
+
+- build Dockerfile / push image 호출이 runtime helper를 통해 수행됨
+- temp Dockerfile 작성과 build/push orchestration이 helper 함수로 분리됨
+- `BuildDockerfileContent`, `PushImage`, `BuildAndPushDockerfileContent`가 runtime helper를 사용함
+- helper orchestration 로직이 unit test로 검증됨
+
+상태:
+
+- 이번 턴에서 구현 진행
+
 ### 5. 다음 후속 작업 준비
 
 이 스프린트가 끝나면 후속으로 바로 이어질 작업은 다음입니다.
@@ -161,13 +184,14 @@ English follows the Korean section.
 
 ## 이번 턴에서 바로 시작한 작업
 
-이 문서를 기준으로 이번 턴까지 진행한 구현은 아래 다섯 가지입니다.
+이 문서를 기준으로 이번 턴까지 진행한 구현은 아래 여섯 가지입니다.
 
 1. runtime contract 고정
 2. image option assembly 분리
 3. volume mode decision 분리
 4. volume runtime helper 분리
 5. container runtime helper 분리
+6. image build/push runtime helper 분리
 
 ## 성공 조건
 
@@ -306,6 +330,29 @@ Status:
 
 - implemented in this turn
 
+### 6. Separate image build/push runtime helpers
+
+Next, move the core build/push path in `image.go` behind a dedicated runtime helper layer.
+The purpose of this step is to let `BuildDockerfileContent`, `PushImage`, and `BuildAndPushDockerfileContent` focus on flow and input validation,
+while the real buildah/imagebuildah calls sit behind a thinner boundary.
+
+Targets:
+
+- `image.go`
+- new runtime helper
+- new unit test
+
+Definition of done:
+
+- build Dockerfile / push image calls are performed through runtime helpers
+- temp Dockerfile writing and build/push orchestration are moved into helper functions
+- `BuildDockerfileContent`, `PushImage`, and `BuildAndPushDockerfileContent` use the runtime helpers
+- the helper orchestration logic is covered by unit tests
+
+Status:
+
+- implemented in this turn
+
 ### 5. Prepare the following slice
 
 After this sprint, the next immediate follow-up work should be:
@@ -315,13 +362,14 @@ After this sprint, the next immediate follow-up work should be:
 
 ## Work started in this turn
 
-The implementation started from this document up to this turn covered these five slices:
+The implementation started from this document up to this turn covered these six slices:
 
 1. lock down the runtime contract
 2. separate image option assembly
 3. separate volume mode decisions
 4. separate volume runtime helpers
 5. separate container runtime helpers
+6. separate image build/push runtime helpers
 
 ## Success criteria
 
