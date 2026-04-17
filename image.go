@@ -1,7 +1,6 @@
 package podbridge5
 
 import (
-	"compress/gzip"
 	"context"
 	"fmt"
 	"github.com/containers/buildah"
@@ -15,8 +14,6 @@ import (
 	"github.com/opencontainers/go-digest"
 	"github.com/seoyhaein/utils"
 	"io"
-	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -396,63 +393,7 @@ func copyScripts(builder *buildah.Builder, scripts map[string][]string) error {
 
 // saveImage saves the built image to an archive file. TODO 파일 읽는 부분 살펴봐야 함. outputFile, err := os.OpenFile(archivePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 func saveImage(ctx context.Context, path, imageName, imageId string, compress bool) error {
-	// imageName 이미 태그를 포함한 완전한 이름이어야 함
-	// 예: "docker.io/library/alpine-internal:latest"
-
-	// 압축 여부에 따른 파일 확장자 설정
-	extension := ".tar"
-	if compress {
-		extension = ".tar.gz"
-	}
-
-	// imageName 에서 마지막 구성 요소를 추출
-	// 예: "docker.io/library/alpine-internal:latest" -> "alpine-internal:latest"
-	baseImage := filepath.Base(imageName)
-	// 파일명에 콜론(:)은 문제가 될 수 있으므로 하이픈(-)으로 치환
-	safeImageName := strings.ReplaceAll(baseImage, ":", "-")
-	// 파일명 생성: safeImageName + 확장자
-	archiveFileName := fmt.Sprintf("%s%s", safeImageName, extension)
-	// 입력받은 path 에 바로 결합 (불필요한 디렉토리 구조가 생성되지 않도록)
-	archivePath := filepath.Join(path, archiveFileName)
-
-	// archive 파일이 위치할 디렉토리 생성
-	dir := filepath.Dir(archivePath)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("failed to create directory %s: %w", dir, err)
-	}
-
-	// 출력 파일 생성 (명시적으로 파일 권한 설정)
-	outputFile, err := os.OpenFile(archivePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
-	if err != nil {
-		return fmt.Errorf("failed to create output file %s: %w", archivePath, err)
-	}
-	defer func() {
-		if cErr := outputFile.Close(); cErr != nil {
-			Log.Warnf("Failed to close output file: %v", cErr)
-		}
-	}()
-
-	var writer io.Writer = outputFile
-
-	if compress {
-		// gzip.Writer 사용하여 데이터를 압축
-		gzipWriter := gzip.NewWriter(outputFile)
-		defer func() {
-			if zCerr := gzipWriter.Close(); zCerr != nil {
-				Log.Errorf("Failed to close gzip writer: %v", zCerr)
-			}
-		}()
-		writer = gzipWriter
-	}
-	// layer 를 별도로 압축을 할 수 있음.
-	exportOptions := &images.ExportOptions{
-		// 필요한 경우 추가 옵션을 설정
-	}
-
-	if err := images.Export(ctx, []string{imageId}, writer, exportOptions); err != nil {
-		return fmt.Errorf("failed to export image %s: %w", imageId, err)
-	}
-	return nil
+	return saveImageWithRuntime(ctx, realImageExportRuntime{}, path, imageName, imageId, compress)
 }
 
 // internalizeImageName 은 입력 이미지 이름에서 태그 앞에 "-internal"을 삽입하여 내부 전용 이미지 이름을 생성
