@@ -175,6 +175,29 @@ English follows the Korean section.
 
 - 이번 턴에서 구현 진행
 
+### 7. Image builder runtime helper 분리
+
+다음으로 `image.go`와 `buildconfig.go`가 공유하는 builder 조작 경로를 별도 runtime helper 레이어로 옮깁니다.
+이 단계의 목적은 `newBuilder`, 디렉터리 생성, chmod, script copy, install 실행이 공통 helper를 통해 수행되도록 하고,
+buildah builder 직접 조작 코드를 더 얇은 경계 뒤로 밀어 넣는 것입니다.
+
+대상:
+
+- `image.go`
+- 신규 builder runtime helper
+- 신규 unit test
+
+완료 기준:
+
+- `newBuilder`가 runtime helper를 통해 builder를 생성함
+- directory create / chmod / script copy / install 실행이 helper 함수로 분리됨
+- 기존 wrapper 함수 시그니처는 유지되고 내부에서 helper를 사용함
+- helper orchestration 로직이 unit test로 검증됨
+
+상태:
+
+- 이번 턴에서 구현 진행
+
 ### 5. 다음 후속 작업 준비
 
 이 스프린트가 끝나면 후속으로 바로 이어질 작업은 다음입니다.
@@ -184,7 +207,7 @@ English follows the Korean section.
 
 ## 이번 턴에서 바로 시작한 작업
 
-이 문서를 기준으로 이번 턴까지 진행한 구현은 아래 여섯 가지입니다.
+이 문서를 기준으로 이번 턴까지 진행한 구현은 아래 일곱 가지입니다.
 
 1. runtime contract 고정
 2. image option assembly 분리
@@ -192,6 +215,7 @@ English follows the Korean section.
 4. volume runtime helper 분리
 5. container runtime helper 분리
 6. image build/push runtime helper 분리
+7. image builder runtime helper 분리
 
 ## 성공 조건
 
@@ -353,6 +377,29 @@ Status:
 
 - implemented in this turn
 
+### 7. Separate image builder runtime helpers
+
+Next, move the shared builder-manipulation path used by `image.go` and `buildconfig.go` behind a dedicated runtime helper layer.
+The purpose of this step is to route `newBuilder`, directory creation, chmod, script copy, and install execution through common helpers,
+so direct buildah builder manipulation sits behind a thinner boundary.
+
+Targets:
+
+- `image.go`
+- new builder runtime helper
+- new unit test
+
+Definition of done:
+
+- `newBuilder` creates builders through a runtime helper
+- directory create / chmod / script copy / install execution are moved into helper functions
+- existing wrapper function signatures are preserved while using the helpers internally
+- the helper orchestration logic is covered by unit tests
+
+Status:
+
+- implemented in this turn
+
 ### 5. Prepare the following slice
 
 After this sprint, the next immediate follow-up work should be:
@@ -362,7 +409,7 @@ After this sprint, the next immediate follow-up work should be:
 
 ## Work started in this turn
 
-The implementation started from this document up to this turn covered these six slices:
+The implementation started from this document up to this turn covered these seven slices:
 
 1. lock down the runtime contract
 2. separate image option assembly
@@ -370,6 +417,7 @@ The implementation started from this document up to this turn covered these six 
 4. separate volume runtime helpers
 5. separate container runtime helpers
 6. separate image build/push runtime helpers
+7. separate image builder runtime helpers
 
 ## Success criteria
 

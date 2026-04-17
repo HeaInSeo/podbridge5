@@ -361,17 +361,7 @@ func BuildAndPushDockerfileContent(ctx context.Context, store storage.Store, doc
 // newBuilder creates a new builder using the NewBuilder function with default options.
 // TODO 좀더 study 필요. 옵션들에 대해서.
 func newBuilder(ctx context.Context, store storage.Store, idName string) (*buildah.Builder, error) {
-	caps, err := capabilities()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get capabilities: %w", err)
-	}
-
-	builderOpts, err := newBuilderOptions(idName, caps)
-	if err != nil {
-		return nil, err
-	}
-
-	return buildah.NewBuilder(ctx, store, *builderOpts)
+	return newBuilderWithRuntime(ctx, realImageBuilderFactoryRuntime{}, store, idName)
 }
 
 // newAddAndCopyOptions creates default add and copy options.
@@ -385,48 +375,23 @@ func newAddAndCopyOptions() buildah.AddAndCopyOptions {
 
 // createDirectories creates directories inside the builder.
 func createDirectories(builder *buildah.Builder, dirs []string) error {
-	for _, dir := range dirs {
-		err := builder.Run([]string{"mkdir", "-p", dir}, defaultRunOptions)
-		if err != nil {
-			return fmt.Errorf("failed to create directory %s: %w", dir, err)
-		}
-	}
-	return nil
+	return createDirectoriesWithRuntime(builder, dirs)
 }
 
 // setFilePermissions sets file permissions using chmod.
 func setFilePermissions(builder *buildah.Builder, files []string) error {
-	chmodArgs := append([]string{"chmod", "777"}, files...)
-	err := builder.Run(chmodArgs, defaultRunOptions)
-	if err != nil {
-		return fmt.Errorf("failed to set file permissions: %w", err)
-	}
-	return nil
+	return setFilePermissionsWithRuntime(builder, files)
 }
 
 // TODO 생각하기 이게 필요할지 고민해야함. install.sh 까지도.
 // installDependencies runs the install.sh script.
 func installDependencies(builder *buildah.Builder) error {
-	chmodArgs := []string{"/app/install.sh"}
-	err := builder.Run(chmodArgs, defaultRunOptions)
-	if err != nil {
-		return fmt.Errorf("failed to run install.sh: %w", err)
-	}
-	return nil
+	return installDependenciesWithRuntime(builder)
 }
 
 // copyScripts copies scripts to the specified destination directories.
 func copyScripts(builder *buildah.Builder, scripts map[string][]string) error {
-	options := newAddAndCopyOptions()
-	for dest, srcList := range scripts {
-		for _, src := range srcList {
-			err := builder.Add(dest, false, options, src)
-			if err != nil {
-				return fmt.Errorf("failed to copy script %s to %s: %w", src, dest, err)
-			}
-		}
-	}
-	return nil
+	return copyScriptsWithRuntime(builder, newAddAndCopyOptions(), scripts)
 }
 
 // saveImage saves the built image to an archive file. TODO 파일 읽는 부분 살펴봐야 함. outputFile, err := os.OpenFile(archivePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
