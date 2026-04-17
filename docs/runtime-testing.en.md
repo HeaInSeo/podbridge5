@@ -15,7 +15,6 @@ This is the fast path on the current host.
 - `make runtime-env-check`
 - `make test-runtime`
 - `make test-runtime-integration`
-- `make runtime-env-check`
 
 This path is useful for code changes and lightweight validation.
 `test-unit` is the fast path without runtime-tagged tests, while `test-runtime` exercises the current host with Podman/buildah available.
@@ -32,6 +31,10 @@ This is the host-side path that exercises real Podman/buildah behavior on the cu
 `test-runtime-integration` runs the `runtime + integration` path under `unshare`. Before execution, `runtime-integration-host-check` verifies that `unshare` is available.
 
 ### 3. Remote clean-VM path
+
+If the lab-side VM environment is temporarily under maintenance, this path can be deferred.
+In that case, keep moving with `test-unit` and the local preflight checks, then resume `vm-test-runtime*` once the VM side is available again.
+
 
 Runtime-dependent validation runs on an ephemeral Multipass VM created on `100.123.80.48`.
 

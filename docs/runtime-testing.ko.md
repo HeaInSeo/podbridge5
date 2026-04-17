@@ -15,7 +15,6 @@ README 본문은 프로젝트 소개에 집중하고, VM 기반 테스트 절차
 - `make runtime-env-check`
 - `make test-runtime`
 - `make test-runtime-integration`
-- `make runtime-env-check`
 
 이 경로는 코드 수정과 경량 검증에 적합합니다.
 `test-unit`은 runtime 태그 테스트를 제외한 빠른 경로이고, `test-runtime`은 현재 호스트에서 Podman/buildah 환경까지 포함해 확인하는 경로입니다.
@@ -32,6 +31,10 @@ README 본문은 프로젝트 소개에 집중하고, VM 기반 테스트 절차
 `test-runtime-integration`은 `runtime + integration` 태그 테스트를 `unshare` 환경에서 수행합니다. 실행 전 `runtime-integration-host-check`가 `unshare` 사용 가능 여부를 확인합니다.
 
 ### 3. 원격 clean VM 경로
+
+현재는 옆 장비의 VM 작업이 진행 중이면 이 경로를 잠시 보류할 수 있습니다.
+그 경우에는 `test-unit`과 로컬 preflight 중심으로 진행하고, VM 복구 후 `vm-test-runtime*` 경로를 재개하면 됩니다.
+
 
 runtime 의존 검증은 `100.123.80.48` 장비의 Multipass에서 ephemeral VM을 만들어 수행합니다.
 

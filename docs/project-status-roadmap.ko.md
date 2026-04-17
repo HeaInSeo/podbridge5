@@ -148,6 +148,15 @@ clean VM 기반 runtime 검증 경로도 방향이 잡혀 있습니다.
 - unit과 runtime 실패가 로그 수준에서 구분됨
 - clean VM 테스트 실패 시 환경/코드 원인 분류가 더 쉬워짐
 
+보류 항목:
+
+- VM 검증 단계별 로그 포맷 정리
+- VM 경로의 최종 재현성 확인
+
+보류 조건:
+
+- `100.123.80.48` 측 VM 작업이 끝난 뒤 재개
+
 ### Sprint 2. Runtime Policy Hardening
 
 기간:
