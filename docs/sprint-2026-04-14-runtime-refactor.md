@@ -106,24 +106,49 @@ English follows the Korean section.
 이번 스프린트에서는 우선 healthcheck/executor 계약, image option assembly, volume mode decision을 unit 친화적으로 정리하고,
 그 다음 runtime-only 레이어 분리를 더 진행합니다.
 
+### 4. Volume runtime helper 분리
+
+다음으로 `volume.go` 안에 직접 섞여 있던 image/container runtime 호출을 별도 helper 레이어로 옮깁니다.
+이 단계의 목적은 `WriteFolderToVolume`, `ReadDataFromVolume`가 정책 흐름과 tar 처리에 집중하고,
+실제 Podman binding 호출은 더 얇은 경계 뒤로 밀어 넣는 것입니다.
+
+대상:
+
+- `volume.go`
+- 신규 runtime helper
+- 신규 unit test
+
+완료 기준:
+
+- volume writer/reader spec 조립이 dedicated helper로 분리됨
+- image ensure, create/start, stop/remove가 runtime helper를 통해 호출됨
+- `WriteFolderToVolume`와 `ReadDataFromVolume`가 runtime helper를 사용함
+- helper 조립 로직이 unit test로 검증됨
+
+상태:
+
+- 이번 턴에서 구현 진행
+
 ### 5. 다음 후속 작업 준비
 
 이 스프린트가 끝나면 후속으로 바로 이어질 작업은 다음입니다.
 
-- `image.go`와 `volume.go`의 runtime-only 레이어 분리 심화
+- `image.go`와 `container.go`의 runtime-only 레이어 분리 심화
 - dry-run / timeout 기능 구체화
 
 ## 이번 턴에서 바로 시작한 작업
 
-이 문서를 기준으로 이번 턴에서 바로 진행한 구현은 아래 두 가지입니다.
+이 문서를 기준으로 이번 턴까지 진행한 구현은 아래 네 가지입니다.
 
 1. runtime contract 고정
 2. image option assembly 분리
+3. volume mode decision 분리
+4. volume runtime helper 분리
 
 ## 성공 조건
 
 - 문서가 GitHub에 올라가 있음
-- 첫 두 개의 pure-logic slice가 같이 올라가 있음
+- 앞선 pure/runtime slice들이 같이 올라가 있음
 - clean VM runtime test가 다시 통과함
 
 ---
