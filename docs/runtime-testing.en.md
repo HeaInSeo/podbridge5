@@ -12,6 +12,7 @@ Validation is split into three layers.
 This is the fast path on the current host.
 
 - `make test-unit`
+- `make runtime-env-check`
 - `make test-runtime`
 - `make test-runtime-integration`
 - `make runtime-env-check`
@@ -27,8 +28,8 @@ This is the host-side path that exercises real Podman/buildah behavior on the cu
 - `make test-runtime`
 - `make test-runtime-integration`
 
-`test-runtime` runs the `runtime`-tagged tests.
-`test-runtime-integration` runs the `runtime + integration` path under `unshare`.
+`test-runtime` runs the `runtime`-tagged tests. Before execution, `runtime-host-check` validates the current host Podman socket state.
+`test-runtime-integration` runs the `runtime + integration` path under `unshare`. Before execution, `runtime-integration-host-check` verifies that `unshare` is available.
 
 ### 3. Remote clean-VM path
 
@@ -79,9 +80,16 @@ Remote VM test output is shown in the console and also stored in local log files
 
 The logs include the VM lifecycle, remote preparation steps, worktree sync, and `go test` stdout/stderr.
 
+When the local runtime path fails, the preflight messages should be the first place to look.
+
+- `runtime-env-check`: package prerequisites such as buildah, fuse-overlayfs, gpgme, and btrfs headers
+- `runtime-host-check`: Podman socket or `XDG_RUNTIME_DIR` issues
+- `runtime-integration-host-check`: `unshare` availability issues
+
 ## Common targets
 
 - `make test-unit`
+- `make runtime-env-check`
 - `make test-runtime`
 - `make test-runtime-integration`
 - `make vm-test-runtime REMOTE_PASS=...`
