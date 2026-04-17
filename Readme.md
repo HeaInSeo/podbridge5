@@ -41,6 +41,7 @@ Kubernetes 위에서 사용하는 상위 프로젝트가 있을 수는 있지만
 - English overview: [README.en.md](README.en.md)
 - English runtime validation: [docs/runtime-testing.en.md](docs/runtime-testing.en.md)
 - 현재 리팩터 스프린트 문서: [docs/sprint-2026-04-14-runtime-refactor.md](docs/sprint-2026-04-14-runtime-refactor.md)
+- 프로젝트 상태 및 스프린트 로드맵: [docs/project-status-roadmap.ko.md](docs/project-status-roadmap.ko.md)
 - 기존 README 초안 백업: [backup/Readme.legacy.md](backup/Readme.legacy.md)
 
 ## 현재 검증 방식
