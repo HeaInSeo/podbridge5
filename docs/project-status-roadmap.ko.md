@@ -37,6 +37,10 @@ clean VM 기반 runtime 검증 경로도 방향이 잡혀 있습니다.
 - volume mode decision 분리
 - volume/container/image/buildconfig 전반의 runtime helper 분리
 - build/push/export/builder 조작 경로의 helper 분리
+- Linux runtime init 우선순위 정리
+  - `CONTAINER_HOST -> XDG_RUNTIME_DIR -> default podman socket`
+- `Init()` / `Shutdown()` 재시도 가능 정책 정리
+- 분류 가능한 runtime init 에러 도입
 
 ### 테스트 방향
 
@@ -44,11 +48,13 @@ clean VM 기반 runtime 검증 경로도 방향이 잡혀 있습니다.
 - remote clean VM 기반 runtime test 자동화 확보
 - 로그 수집 경로 확보
 - worktree sync 기반 fresh VM 재검증 경로 확보
+- runtime init policy를 unit test로 검증하는 경로 확보
 
 ### 문서 방향
 
 - README를 프로젝트 소개 중심으로 재구성
 - runtime 검증 문서를 별도 분리
+- runtime init 정책 문서를 별도 분리
 - 한국어/영문 문서 분리
 - 리팩터 스프린트 진행 문서 유지
 
@@ -62,9 +68,9 @@ clean VM 기반 runtime 검증 경로도 방향이 잡혀 있습니다.
 
 ### 검증 체계
 
-- unit / runtime / integration 타깃을 Makefile 수준에서 더 명확히 나눌 필요
 - clean VM full 검증이 항상 안정적으로 끝나는 상태는 아님
-- runtime 실패를 더 빠르게 분류할 수 있는 진단 출력이 부족함
+- runtime 실패를 더 빠르게 분류할 수 있는 진단 출력은 더 보강 여지가 있음
+- VM 경로의 단계별 로그 포맷 정리는 아직 보류 상태임
 
 ### API와 계약
 
@@ -75,8 +81,8 @@ clean VM 기반 runtime 검증 경로도 방향이 잡혀 있습니다.
 ### 기능 정책
 
 - dry-run / timeout 정책은 아직 문서와 코드가 충분히 정리되지 않음
-- buildah/podman/store 초기화 정책을 더 명시할 필요가 있음
-- export/save/build path의 옵션 정책을 더 문서화할 필요가 있음
+- build/push/export 경로의 세부 option 정책은 더 문서화할 필요가 있음
+- stable API와 internal helper 경계는 더 명시할 필요가 있음
 
 ### 운영 문서
 
@@ -136,11 +142,15 @@ clean VM 기반 runtime 검증 경로도 방향이 잡혀 있습니다.
 작업:
 
 - `make test-unit`, `make test-runtime`, `make test-runtime-integration` 정리
-  - 현재 턴에서 착수
+  - 완료
 - runtime-only 테스트 파일/패턴을 더 명확히 구분
+  - 완료
 - VM 검증 시 단계별 로그와 실패 지점 표기 강화
+  - 보류
 - 로컬 `test-runtime` preflight 메시지 강화
+  - 완료
 - local fast path와 clean VM path의 계약 문서 정리
+  - 완료
 
 완료 기준:
 
@@ -171,10 +181,18 @@ clean VM 기반 runtime 검증 경로도 방향이 잡혀 있습니다.
 
 작업:
 
-- dry-run / timeout 정책 설계 및 적용
+- runtime init 우선순위 정리
+  - 완료
+- `Init()` / `Shutdown()` 재시도 정책 정리
+  - 완료
 - runtime init 및 prerequisite 계약 문서화
+  - 진행 중
 - stable API 후보와 internal helper 구분
+  - 진행 전
+- dry-run / timeout 정책 설계 및 적용
+  - 진행 전
 - legacy/중복 경로 정리
+  - 진행 중
 
 완료 기준:
 

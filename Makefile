@@ -58,7 +58,41 @@ runtime-env-check:
 	@echo "runtime environment looks ready"
 
 runtime-host-check:
-	@set -e; 	uid=$$(id -u); 	runtime_dir="$${XDG_RUNTIME_DIR:-/run/user/$$uid}"; 	user_socket="$$runtime_dir/podman/podman.sock"; 	system_socket="/run/podman/podman.sock"; 	echo "[runtime-host-check] uid=$$uid"; 	echo "[runtime-host-check] XDG_RUNTIME_DIR=$$runtime_dir"; 	echo "[runtime-host-check] CONTAINER_HOST=$${CONTAINER_HOST:-<unset>}"; 	if [ -S "$$user_socket" ]; then 		echo "[runtime-host-check] found user podman socket: $$user_socket"; 	elif [ -S "$$system_socket" ]; then 		echo "[runtime-host-check] found system podman socket: $$system_socket"; 	else 		echo "[runtime-host-check] missing podman socket" >&2; 		echo "[runtime-host-check] expected one of:" >&2; 		echo "  - $$user_socket" >&2; 		echo "  - $$system_socket" >&2; 		echo "[runtime-host-check] if VM validation is unavailable, keep using make test-unit until the host runtime is ready" >&2; 		exit 1; 	fi
+	@set -e; \
+	uid=$$(id -u); \
+	runtime_dir="$${XDG_RUNTIME_DIR:-/run/user/$$uid}"; \
+	container_host="$${CONTAINER_HOST:-}"; \
+	user_socket="$$runtime_dir/podman/podman.sock"; \
+	system_socket="/run/podman/podman.sock"; \
+	echo "[runtime-host-check] uid=$$uid"; \
+	echo "[runtime-host-check] XDG_RUNTIME_DIR=$$runtime_dir"; \
+	echo "[runtime-host-check] CONTAINER_HOST=$${container_host:-<unset>}"; \
+	if [ -n "$$container_host" ]; then \
+		case "$$container_host" in \
+			unix://*) socket_path="$${container_host#unix://}" ;; \
+			unix:*) socket_path="$${container_host#unix:}" ;; \
+			*) echo "[runtime-host-check] CONTAINER_HOST is set; podbridge5 will use it as-is"; exit 0 ;; \
+		esac; \
+		if [ -S "$$socket_path" ]; then \
+			echo "[runtime-host-check] found CONTAINER_HOST socket: $$socket_path"; \
+			exit 0; \
+		fi; \
+		echo "[runtime-host-check] missing CONTAINER_HOST socket: $$socket_path" >&2; \
+		exit 1; \
+	fi; \
+	if [ -S "$$user_socket" ]; then \
+		echo "[runtime-host-check] found user podman socket: $$user_socket"; \
+	elif [ -S "$$system_socket" ]; then \
+		echo "[runtime-host-check] found system podman socket: $$system_socket"; \
+	else \
+		echo "[runtime-host-check] missing podman socket" >&2; \
+		echo "[runtime-host-check] expected one of:" >&2; \
+		echo "  - $$user_socket" >&2; \
+		echo "  - $$system_socket" >&2; \
+		echo "[runtime-host-check] podbridge5 resolves runtime in this order: CONTAINER_HOST -> XDG_RUNTIME_DIR -> default podman socket" >&2; \
+		echo "[runtime-host-check] if VM validation is unavailable, keep using make test-unit until the host runtime is ready" >&2; \
+		exit 1; \
+	fi
 
 runtime-integration-host-check:
 	@command -v unshare >/dev/null 2>&1 || { echo "missing: unshare" >&2; exit 1; }

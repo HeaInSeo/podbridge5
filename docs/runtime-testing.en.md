@@ -3,6 +3,9 @@
 This document describes the runtime validation path for `podbridge5`.
 The main README stays focused on project description, while the VM-based validation flow is documented here.
 
+The runtime initialization precedence itself is documented in [runtime-policy.en.md](runtime-policy.en.md).
+Both the host preflight and the Go runtime path use `CONTAINER_HOST -> XDG_RUNTIME_DIR -> default socket`.
+
 ## Validation paths
 
 Validation is split into three layers.
@@ -34,7 +37,6 @@ This is the host-side path that exercises real Podman/buildah behavior on the cu
 
 If the lab-side VM environment is temporarily under maintenance, this path can be deferred.
 In that case, keep moving with `test-unit` and the local preflight checks, then resume `vm-test-runtime*` once the VM side is available again.
-
 
 Runtime-dependent validation runs on an ephemeral Multipass VM created on `100.123.80.48`.
 
@@ -86,13 +88,14 @@ The logs include the VM lifecycle, remote preparation steps, worktree sync, and 
 When the local runtime path fails, the preflight messages should be the first place to look.
 
 - `runtime-env-check`: package prerequisites such as buildah, fuse-overlayfs, gpgme, and btrfs headers
-- `runtime-host-check`: Podman socket or `XDG_RUNTIME_DIR` issues
+- `runtime-host-check`: `CONTAINER_HOST`, Podman socket, or `XDG_RUNTIME_DIR` issues
 - `runtime-integration-host-check`: `unshare` availability issues
 
 ## Common targets
 
 - `make test-unit`
 - `make runtime-env-check`
+- `make runtime-host-check`
 - `make test-runtime`
 - `make test-runtime-integration`
 - `make vm-test-runtime REMOTE_PASS=...`
