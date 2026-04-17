@@ -109,10 +109,17 @@ func TestNewDefaultAddAndCopyOptions(t *testing.T) {
 	if got.ContextDir != "." {
 		t.Fatalf("unexpected context dir: %q", got.ContextDir)
 	}
-	if got.DryRun {
-		t.Fatal("expected dry run to be false")
+	if got.DryRun != DefaultAddAndCopyDryRun {
+		t.Fatalf("unexpected dry run default: got %v want %v", got.DryRun, DefaultAddAndCopyDryRun)
 	}
 	if got.Hasher == nil {
 		t.Fatal("expected hasher to be set")
+	}
+}
+
+func TestNewDefaultAddAndCopyOptionsWithDryRun(t *testing.T) {
+	got := newDefaultAddAndCopyOptionsWithDryRun(nil, true)
+	if !got.DryRun {
+		t.Fatal("expected dry run override to be true")
 	}
 }

@@ -39,9 +39,11 @@ Kubernetes 위에서 사용하는 상위 프로젝트가 있을 수는 있지만
 
 - 한국어 runtime 검증 문서: [docs/runtime-testing.ko.md](docs/runtime-testing.ko.md)
 - 한국어 runtime 초기화 정책: [docs/runtime-policy.ko.md](docs/runtime-policy.ko.md)
+- 한국어 dry-run / timeout 정책: [docs/execution-policy.ko.md](docs/execution-policy.ko.md)
 - English overview: [README.en.md](README.en.md)
 - English runtime validation: [docs/runtime-testing.en.md](docs/runtime-testing.en.md)
 - English runtime policy: [docs/runtime-policy.en.md](docs/runtime-policy.en.md)
+- English dry-run / timeout policy: [docs/execution-policy.en.md](docs/execution-policy.en.md)
 - 현재 리팩터 스프린트 문서: [docs/sprint-2026-04-14-runtime-refactor.md](docs/sprint-2026-04-14-runtime-refactor.md)
 - 프로젝트 상태 및 스프린트 로드맵: [docs/project-status-roadmap.ko.md](docs/project-status-roadmap.ko.md)
 - 기존 README 초안 백업: [backup/Readme.legacy.md](backup/Readme.legacy.md)

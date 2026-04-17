@@ -23,9 +23,6 @@ English follows the Korean section.
 
 ### 1. Runtime contract 고정
 
-우선 `executor.sh`, `healthcheck.sh`, `/app` 경로, 결과 로그 경로, 기본 command를 코드 상수로 고정합니다.
-이 단계의 목적은 문자열이 여러 파일에 흩어져 있는 상태를 줄이고, 이후 refactor의 기준점을 만드는 것입니다.
-
 상태:
 
 - 완료
@@ -92,24 +89,30 @@ English follows the Korean section.
 
 ### 12. Runtime init policy hardening 시작
 
-이번 단계에서는 runtime 초기화 정책을 코드와 문서에 명시적으로 고정합니다.
-핵심은 `CONTAINER_HOST` 우선순위, `Init()` / `Shutdown()` 재시도 가능 계약,
-그리고 분류 가능한 runtime init 에러를 도입하는 것입니다.
+상태:
+
+- 완료
+
+### 13. Dry-run / timeout policy hardening 시작
+
+이번 단계에서는 현재 라이브러리가 실제로 지원하는 dry-run 과 timeout 범위를 문서와 코드에서 고정합니다.
+핵심은 add/copy dry-run 기본값, healthcheck timeout 기본값과 최소값,
+그리고 "아직 library-wide policy가 아닌 영역"을 분명히 적는 것입니다.
 
 대상:
 
-- `connect_linux_5.go`
-- `rootless.go`
-- 신규 runtime init helper / unit test
-- runtime 정책 문서
+- 신규 execution policy helper / unit test
+- `runtime_contract.go`
+- `image_options.go`
+- execution policy 문서
 
 완료 기준:
 
-- Linux connection URI 우선순위가 코드와 문서에서 일치함
-- `runtime-host-check`와 실제 Go runtime 해석 규칙이 일치함
-- `ErrRuntimeConnectionUnavailable`, `ErrRuntimeStoreUnavailable`, `ErrRuntimeNotInitialized`가 도입됨
-- `Init()` 실패 후 환경 수정 뒤 재시도가 가능함
-- 관련 helper가 unit test로 검증됨
+- `DefaultAddAndCopyDryRun`가 코드 상수로 고정됨
+- healthcheck interval/retries/timeout/start period 기본값이 코드 상수로 고정됨
+- healthcheck timeout 최소값이 공통 helper로 검증됨
+- `ParseHealthcheckConfig(...)`가 공통 helper를 사용함
+- dry-run / timeout 범위와 비범위가 문서에 명시됨
 
 상태:
 
@@ -119,6 +122,6 @@ English follows the Korean section.
 
 다음 단계에서는 아래 항목을 이어서 진행합니다.
 
-- dry-run / timeout 정책 고정
 - stable API와 internal helper 경계 문서화
-- VM 경로 복구 후 runtime init 정책의 clean VM 재검증
+- build/push/export option 정책 문서화
+- VM 경로 복구 후 runtime policy의 clean VM 재검증

@@ -41,6 +41,8 @@ clean VM 기반 runtime 검증 경로도 방향이 잡혀 있습니다.
   - `CONTAINER_HOST -> XDG_RUNTIME_DIR -> default podman socket`
 - `Init()` / `Shutdown()` 재시도 가능 정책 정리
 - 분류 가능한 runtime init 에러 도입
+- healthcheck timeout 기본값과 최소값 고정
+- add/copy dry-run 기본값 고정
 
 ### 테스트 방향
 
@@ -49,12 +51,14 @@ clean VM 기반 runtime 검증 경로도 방향이 잡혀 있습니다.
 - 로그 수집 경로 확보
 - worktree sync 기반 fresh VM 재검증 경로 확보
 - runtime init policy를 unit test로 검증하는 경로 확보
+- dry-run / timeout policy를 unit test로 검증하는 경로 확보
 
 ### 문서 방향
 
 - README를 프로젝트 소개 중심으로 재구성
 - runtime 검증 문서를 별도 분리
 - runtime init 정책 문서를 별도 분리
+- dry-run / timeout 정책 문서를 별도 분리
 - 한국어/영문 문서 분리
 - 리팩터 스프린트 진행 문서 유지
 
@@ -80,9 +84,10 @@ clean VM 기반 runtime 검증 경로도 방향이 잡혀 있습니다.
 
 ### 기능 정책
 
-- dry-run / timeout 정책은 아직 문서와 코드가 충분히 정리되지 않음
 - build/push/export 경로의 세부 option 정책은 더 문서화할 필요가 있음
 - stable API와 internal helper 경계는 더 명시할 필요가 있음
+- container lifecycle, build, push, export의 timeout 정책은 아직 library-wide contract로 고정되지 않음
+- dry-run도 현재는 add/copy surface 외에는 공통 정책이 아님
 
 ### 운영 문서
 
@@ -186,10 +191,14 @@ clean VM 기반 runtime 검증 경로도 방향이 잡혀 있습니다.
 - `Init()` / `Shutdown()` 재시도 정책 정리
   - 완료
 - runtime init 및 prerequisite 계약 문서화
-  - 진행 중
+  - 완료
+- dry-run 기본 범위 문서화
+  - 완료
+- healthcheck timeout 기본값과 최소값 고정
+  - 완료
 - stable API 후보와 internal helper 구분
   - 진행 전
-- dry-run / timeout 정책 설계 및 적용
+- build/push/export option 정책 문서화
   - 진행 전
 - legacy/중복 경로 정리
   - 진행 중
