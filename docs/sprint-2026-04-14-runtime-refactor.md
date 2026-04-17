@@ -129,6 +129,29 @@ English follows the Korean section.
 
 - 이번 턴에서 구현 진행
 
+### 5. Container runtime helper 분리
+
+다음으로 `container.go` 안에 직접 섞여 있던 image/container runtime 호출을 별도 helper 레이어로 옮깁니다.
+이 단계의 목적은 `CreateContainer`, `StartContainer`, `InspectContainer`가 흐름과 계약에 집중하고,
+실제 Podman binding 호출과 상태 매핑은 더 얇은 경계 뒤로 밀어 넣는 것입니다.
+
+대상:
+
+- `container.go`
+- 신규 runtime helper
+- 신규 unit test
+
+완료 기준:
+
+- container exists / image ensure / create / start / inspect가 runtime helper를 통해 호출됨
+- `CreateContainer`, `StartContainer`, `InspectContainer`, `handleExistingContainer`가 runtime helper를 사용함
+- inspect state -> `ContainerStatus` 매핑이 별도 순수 함수로 분리됨
+- helper와 상태 매핑 로직이 unit test로 검증됨
+
+상태:
+
+- 이번 턴에서 구현 진행
+
 ### 5. 다음 후속 작업 준비
 
 이 스프린트가 끝나면 후속으로 바로 이어질 작업은 다음입니다.
@@ -138,12 +161,13 @@ English follows the Korean section.
 
 ## 이번 턴에서 바로 시작한 작업
 
-이 문서를 기준으로 이번 턴까지 진행한 구현은 아래 네 가지입니다.
+이 문서를 기준으로 이번 턴까지 진행한 구현은 아래 다섯 가지입니다.
 
 1. runtime contract 고정
 2. image option assembly 분리
 3. volume mode decision 분리
 4. volume runtime helper 분리
+5. container runtime helper 분리
 
 ## 성공 조건
 
@@ -259,6 +283,29 @@ The next step is to make the test layers more explicit.
 In this sprint, the first concrete move is to make the healthcheck/executor contract, image option assembly, and volume mode decisions more unit-friendly,
 then continue pushing the runtime-only layer split further.
 
+### 5. Separate container runtime helpers
+
+Next, move the image/container runtime calls mixed directly into `container.go` behind a dedicated helper layer.
+The purpose of this step is to let `CreateContainer`, `StartContainer`, and `InspectContainer` focus on flow and contracts,
+while the real Podman binding calls and inspect-state mapping sit behind a thinner boundary.
+
+Targets:
+
+- `container.go`
+- new runtime helper
+- new unit test
+
+Definition of done:
+
+- container exists / image ensure / create / start / inspect are called through runtime helpers
+- `CreateContainer`, `StartContainer`, `InspectContainer`, and `handleExistingContainer` use those runtime helpers
+- inspect state -> `ContainerStatus` mapping is moved into a dedicated pure function
+- the helper and status-mapping logic are covered by unit tests
+
+Status:
+
+- implemented in this turn
+
 ### 5. Prepare the following slice
 
 After this sprint, the next immediate follow-up work should be:
@@ -268,14 +315,16 @@ After this sprint, the next immediate follow-up work should be:
 
 ## Work started in this turn
 
-The implementation started from this document in this turn covered these three slices:
+The implementation started from this document up to this turn covered these five slices:
 
 1. lock down the runtime contract
 2. separate image option assembly
 3. separate volume mode decisions
+4. separate volume runtime helpers
+5. separate container runtime helpers
 
 ## Success criteria
 
 - the document is published to GitHub
-- the first three pure-logic slices are published with it
+- the current pure/runtime slices are published with it
 - the clean-VM runtime test passes again
