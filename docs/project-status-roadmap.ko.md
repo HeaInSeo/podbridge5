@@ -136,6 +136,7 @@ clean VM 기반 runtime 검증 경로도 방향이 잡혀 있습니다.
 작업:
 
 - `make test-unit`, `make test-runtime`, `make test-runtime-integration` 정리
+  - 현재 턴에서 착수
 - runtime-only 테스트 파일/패턴을 더 명확히 구분
 - VM 검증 시 단계별 로그와 실패 지점 표기 강화
 - local fast path와 clean VM path의 계약 문서 정리

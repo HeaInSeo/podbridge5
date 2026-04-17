@@ -5,21 +5,32 @@ The main README stays focused on project description, while the VM-based validat
 
 ## Validation paths
 
-Validation is split into two paths.
+Validation is split into three layers.
 
-### 1. Local base path
+### 1. Local unit path
 
 This is the fast path on the current host.
 
-- `make test`
+- `make test-unit`
 - `make test-runtime`
 - `make test-runtime-integration`
 - `make runtime-env-check`
 
 This path is useful for code changes and lightweight validation.
-Since the repository still depends on `buildah`, `containers/storage`, and `containers/image`, a full test run may still require host packages to be installed.
+`test-unit` is the fast path without runtime-tagged tests, while `test-runtime` exercises the current host with Podman/buildah available.
+Since the repository still depends on `buildah`, `containers/storage`, and `containers/image`, the runtime path may still require host packages to be installed.
 
-### 2. Remote clean-VM path
+### 2. Local runtime / integration path
+
+This is the host-side path that exercises real Podman/buildah behavior on the current machine.
+
+- `make test-runtime`
+- `make test-runtime-integration`
+
+`test-runtime` runs the `runtime`-tagged tests.
+`test-runtime-integration` runs the `runtime + integration` path under `unshare`.
+
+### 3. Remote clean-VM path
 
 Runtime-dependent validation runs on an ephemeral Multipass VM created on `100.123.80.48`.
 
@@ -57,7 +68,7 @@ The Makefile handles the remote runtime VM lifecycle automatically.
 5. runs `go test ./...` inside the VM
 6. deletes the VM after the test finishes
 
-`make vm-test-runtime-integration` follows the same lifecycle and runs the integration-tag path.
+`make vm-test-runtime-integration` follows the same lifecycle and runs the `runtime + integration` tag path.
 
 ## Log collection
 
@@ -70,6 +81,9 @@ The logs include the VM lifecycle, remote preparation steps, worktree sync, and 
 
 ## Common targets
 
+- `make test-unit`
+- `make test-runtime`
+- `make test-runtime-integration`
 - `make vm-test-runtime REMOTE_PASS=...`
 - `make vm-test-runtime-integration REMOTE_PASS=...`
 - `make vm-create-runtime REMOTE_PASS=...`

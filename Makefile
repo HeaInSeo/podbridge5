@@ -22,21 +22,29 @@ REMOTE_VM_RUN = \
 	PODBRIDGE5_VM_REPO='$(PODBRIDGE5_VM_REPO)' PODBRIDGE5_LOCAL_REPO='$(PODBRIDGE5_LOCAL_REPO)' \
 	cd /opt/go/src/github.com/HeaInSeo/podbridge5/hack/remotevm && $(GO) run .
 
-.PHONY: test test-runtime test-runtime-integration runtime-env-check \
+.PHONY: test test-unit test-runtime test-runtime-integration runtime-env-check \
 	check-remote-pass vm-create-runtime vm-prepare-runtime vm-sync-runtime \
 	vm-run-runtime vm-run-runtime-integration vm-delete-runtime \
 	vm-test-runtime vm-test-runtime-integration
 
-# Legacy alias kept for compatibility.
-test: test-runtime
+TEST_TAGS_BASE ?= exclude_graphdriver_btrfs containers_image_openpgp exclude_graphdriver_devicemapper
+TEST_TAGS_RUNTIME ?= $(TEST_TAGS_BASE) runtime
+TEST_TAGS_RUNTIME_INTEGRATION ?= $(TEST_TAGS_BASE) runtime integration
 
-test-runtime:
-	$(GO) test -v -race -cover ./...
+# Legacy alias kept for compatibility.
+test: test-unit
+
+test-unit:
+	$(GO) test -v -race -cover -tags "$(TEST_TAGS_BASE)" ./...
+
+test-runtime: runtime-env-check
+	@echo "Running runtime-tagged tests on the current host..."
+	$(GO) test -v -tags "$(TEST_TAGS_RUNTIME)" ./...
 
 # Runtime-sensitive integration tests.
-test-runtime-integration:
+test-runtime-integration: runtime-env-check
 	@echo "Running integration tests with unshare..."
-	@unshare -r -m $(GO) test -v -tags=integration ./...
+	@unshare -r -m $(GO) test -v -tags "$(TEST_TAGS_RUNTIME_INTEGRATION)" ./...
 
 runtime-env-check:
 	@command -v buildah >/dev/null 2>&1 || { echo "missing: buildah" >&2; exit 1; }
