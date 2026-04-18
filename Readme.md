@@ -40,6 +40,7 @@ Kubernetes 위에서 사용하는 상위 프로젝트가 있을 수는 있지만
 - 한국어 runtime 검증 문서: [docs/runtime-testing.ko.md](docs/runtime-testing.ko.md)
 - 한국어 runtime 초기화 정책: [docs/runtime-policy.ko.md](docs/runtime-policy.ko.md)
 - 한국어 dry-run / timeout 정책: [docs/execution-policy.ko.md](docs/execution-policy.ko.md)
+- 한국어 구현 우선순위: [docs/implementation-priorities.ko.md](docs/implementation-priorities.ko.md)
 - English overview: [README.en.md](README.en.md)
 - English runtime validation: [docs/runtime-testing.en.md](docs/runtime-testing.en.md)
 - English runtime policy: [docs/runtime-policy.en.md](docs/runtime-policy.en.md)

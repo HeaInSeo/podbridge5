@@ -21,6 +21,8 @@ clean VM 기반 runtime 검증 경로도 방향이 잡혀 있습니다.
 - unit / runtime / integration 경계의 운영 수준 분리 미완료
 - 안정 API와 내부 helper의 계약 문서화 부족
 
+구현 보강 우선순위는 [implementation-priorities.ko.md](implementation-priorities.ko.md)에서 별도로 관리합니다.
+
 현재 판단은 아래와 같습니다.
 
 - 내부 사용 기준: 가능
@@ -59,6 +61,7 @@ clean VM 기반 runtime 검증 경로도 방향이 잡혀 있습니다.
 - runtime 검증 문서를 별도 분리
 - runtime init 정책 문서를 별도 분리
 - dry-run / timeout 정책 문서를 별도 분리
+- 구현 우선순위 문서를 별도 분리
 - 한국어/영문 문서 분리
 - 리팩터 스프린트 진행 문서 유지
 
