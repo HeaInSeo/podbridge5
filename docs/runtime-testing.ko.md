@@ -6,6 +6,9 @@ README 본문은 프로젝트 소개에 집중하고, VM 기반 테스트 절차
 runtime 초기화 우선순위 자체는 [runtime-policy.ko.md](runtime-policy.ko.md)를 따릅니다.
 즉, host preflight와 실제 Go 코드 모두 `CONTAINER_HOST -> XDG_RUNTIME_DIR -> 기본 socket` 순서를 사용합니다.
 
+이 문서의 모든 경로는 `Go 1.25.5` 기준을 전제로 합니다.
+`podbridge5`는 다른 관련 프로젝트와 같은 `Go 1.25.x` baseline을 사용하며, 낮은 Go 버전 호환은 목표가 아닙니다.
+
 ## 검증 경로
 
 검증은 세 층으로 나눕니다.
@@ -18,6 +21,8 @@ runtime 초기화 우선순위 자체는 [runtime-policy.ko.md](runtime-policy.k
 - `make runtime-env-check`
 - `make test-runtime`
 - `make test-runtime-integration`
+
+이 타깃들은 실행 전에 `go-version-check`를 거쳐 현재 `go` 바이너리가 `go1.25.5`인지 확인합니다.
 
 이 경로는 코드 수정과 경량 검증에 적합합니다.
 `test-unit`은 runtime 태그 테스트를 제외한 빠른 경로이고, `test-runtime`은 현재 호스트에서 Podman/buildah 환경까지 포함해 확인하는 경로입니다.
@@ -40,10 +45,29 @@ runtime 초기화 우선순위 자체는 [runtime-policy.ko.md](runtime-policy.k
 
 runtime 의존 검증은 `100.123.80.48` 장비의 Multipass에서 ephemeral VM을 만들어 수행합니다.
 
+#### 수동 디버깅용 영구 VM
+
+`make vm-test-runtime`은 ephemeral VM을 만들고 테스트 후 삭제한다.
+rootless/rootful 동작을 직접 확인하거나 buildah/podman 문제를 파고들 때는 영구 VM이 필요하다.
+
+```bash
+# 영구 dev VM 생성 및 패키지 설치
+bash hack/setup-dev-vm.sh
+
+# 커스텀 설정
+REMOTE_HOST=100.123.80.48 REMOTE_USER=seoy bash hack/setup-dev-vm.sh
+```
+
+VM이 이미 존재하면 생성을 건너뛴다 (idempotent).
+설치 항목: `buildah`, `podman`, `fuse-overlayfs`, `slirp4netns`, `uidmap` + `/etc/subuid`, `/etc/subgid` 자동 구성.
+
+VM을 삭제해도 이 스크립트로 동일한 환경을 재현할 수 있다.
+
 - 대상 장비: `100.123.80.48`
 - 사용자: `seoy`
 - 기본 VM 이름: `podbridge5-dev`
 - 권장 OS: Ubuntu 24.04
+- 인증: SSH key/agent 우선, 필요 시 `REMOTE_PASS`
 
 검증 대상 예시:
 
@@ -69,6 +93,7 @@ runtime 의존 검증은 `100.123.80.48` 장비의 Multipass에서 ephemeral VM�
 
 1. 원격 장비에서 테스트용 VM 생성
 2. 필요한 패키지와 system `podman` socket 준비
+   이 단계에서 VM 내부 Go toolchain도 `1.25.5`로 맞춥니다.
 3. 현재 로컬 `podbridge5` 워크트리를 tar.gz로 묶어 원격 호스트로 업로드
 4. 원격 호스트에서 `multipass transfer`로 fresh VM에 동기화
 5. VM 안에서 `go test ./...` 실행
@@ -107,3 +132,6 @@ runtime 의존 검증은 `100.123.80.48` 장비의 Multipass에서 ephemeral VM�
 
 기본값으로 현재 로컬 워크트리(`$(CURDIR)`)가 VM에 동기화됩니다.
 필요하면 `PODBRIDGE5_LOCAL_REPO=/path/to/repo`로 명시적으로 바꿀 수 있습니다.
+
+SSH key 또는 SSH agent가 이미 설정되어 있으면 `REMOTE_PASS` 없이도 실행할 수 있습니다.
+현재 운영 기준에서는 `ssh seoy@100.123.80.48` 직접 접속이 되면 VM 경로를 우선 사용합니다.
