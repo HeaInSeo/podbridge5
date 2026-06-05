@@ -6,6 +6,9 @@ The main README stays focused on project description, while the VM-based validat
 The runtime initialization precedence itself is documented in [runtime-policy.en.md](runtime-policy.en.md).
 Both the host preflight and the Go runtime path use `CONTAINER_HOST -> XDG_RUNTIME_DIR -> default socket`.
 
+Every path in this document assumes `Go 1.25.5`.
+`podbridge5` follows the same `Go 1.25.x` baseline as sibling projects, and compatibility with older Go versions is not a goal.
+
 ## Validation paths
 
 Validation is split into three layers.
@@ -18,6 +21,8 @@ This is the fast path on the current host.
 - `make runtime-env-check`
 - `make test-runtime`
 - `make test-runtime-integration`
+
+Before running tests, those targets pass through `go-version-check` so the active `go` binary must be `go1.25.5`.
 
 This path is useful for code changes and lightweight validation.
 `test-unit` is the fast path without runtime-tagged tests, while `test-runtime` exercises the current host with Podman/buildah available.
@@ -44,6 +49,7 @@ Runtime-dependent validation runs on an ephemeral Multipass VM created on `100.1
 - user: `seoy`
 - default VM name: `podbridge5-dev`
 - recommended OS: Ubuntu 24.04
+- auth: prefer SSH key/agent, use `REMOTE_PASS` only when needed
 
 Validated components include:
 
@@ -69,6 +75,7 @@ The Makefile handles the remote runtime VM lifecycle automatically.
 
 1. creates a fresh test VM on the remote machine
 2. installs required packages and prepares the system `podman` socket
+   This step also aligns the VM Go toolchain to `1.25.5`.
 3. archives the current local `podbridge5` worktree and uploads it to the remote host
 4. syncs that archive into the fresh VM with `multipass transfer`
 5. runs `go test ./...` inside the VM
@@ -107,3 +114,6 @@ When the local runtime path fails, the preflight messages should be the first pl
 
 By default, the current local worktree (`$(CURDIR)`) is synced into the VM.
 You can override it explicitly with `PODBRIDGE5_LOCAL_REPO=/path/to/repo`.
+
+If SSH key or SSH agent auth is already configured, the VM flow can run without `REMOTE_PASS`.
+In practice, if `ssh seoy@100.123.80.48` works directly, prefer the VM path for runtime validation.

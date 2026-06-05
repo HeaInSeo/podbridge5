@@ -2,6 +2,7 @@ package podbridge5
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -18,8 +19,11 @@ type containerRuntime interface {
 	EnsureImage(ctx context.Context, imageRef string) error
 	CreateContainer(ctx context.Context, spec *specgen.SpecGenerator) (*entitiesTypes.ContainerCreateResponse, error)
 	StartContainer(ctx context.Context, containerID string) error
+	RemoveContainer(ctx context.Context, containerID string) error
 	InspectContainer(ctx context.Context, containerID string) (*define.InspectContainerData, error)
 }
+
+var ErrContainerAlreadyExists = errors.New("container already exists")
 
 type podmanContainerRuntime struct{}
 
@@ -60,6 +64,13 @@ func (podmanContainerRuntime) StartContainer(ctx context.Context, containerID st
 	return nil
 }
 
+func (podmanContainerRuntime) RemoveContainer(ctx context.Context, containerID string) error {
+	if _, err := containers.Remove(ctx, containerID, &containers.RemoveOptions{Force: utils.PTrue}); err != nil {
+		return fmt.Errorf("remove container %q: %w", containerID, err)
+	}
+	return nil
+}
+
 func (podmanContainerRuntime) InspectContainer(ctx context.Context, containerID string) (*define.InspectContainerData, error) {
 	data, err := containers.Inspect(ctx, containerID, &containers.InspectOptions{Size: utils.PFalse})
 	if err != nil {
@@ -82,6 +93,10 @@ func startContainerWithRuntime(ctx context.Context, runtime containerRuntime, sp
 	}
 
 	if err := runtime.StartContainer(ctx, ccr.ID); err != nil {
+		cleanupCtx := context.Background()
+		if removeErr := runtime.RemoveContainer(cleanupCtx, ccr.ID); removeErr != nil {
+			return "", errors.Join(err, removeErr)
+		}
 		return "", err
 	}
 
@@ -105,7 +120,11 @@ func createContainerWithRuntime(ctx context.Context, runtime containerRuntime, c
 		return nil, err
 	}
 	if containerExists {
-		return handleExistingContainerWithRuntime(ctx, runtime, conSpec.Name)
+		info, inspectErr := runtime.InspectContainer(ctx, conSpec.Name)
+		if inspectErr != nil {
+			return nil, inspectErr
+		}
+		return nil, fmt.Errorf("%w: name=%s existing_id=%s existing_image=%s expected_image=%s", ErrContainerAlreadyExists, conSpec.Name, info.ID, info.Image, conSpec.Image)
 	}
 
 	if err := runtime.EnsureImage(ctx, conSpec.Image); err != nil {

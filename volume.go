@@ -198,6 +198,10 @@ func VolumeExists(ctx context.Context, name string) (bool, error) {
 // WriteFolderToVolume TODO 일단 테스트 필요 일단 붙이면서 보자. 동시성 문제의 경우 ctx 관련해서 생각해보자. 중요.
 // TODO 부가적으로 시간 또는 퍼센트를 나타내는 것을 추가할지 고민해야 함. 일단 합치는 것 부터 하고 나머지 진행하기로 함.
 func WriteFolderToVolume(parentCtx context.Context, volumeName, mountPath, hostDir string, mode VolumeMode) error {
+	if parentCtx == nil {
+		return fmt.Errorf("WriteFolderToVolume: parentCtx must not be nil")
+	}
+
 	ctx, cancel := context.WithCancel(parentCtx)
 	defer cancel()
 
@@ -360,10 +364,16 @@ func WriteFolderToVolume(parentCtx context.Context, volumeName, mountPath, hostD
 	copyFunc, err := containers.CopyFromArchiveWithOptions(ctx, containerID, mountPath, pr, nil)
 	if err != nil {
 		cancel()
+		_ = pr.CloseWithError(err)
+		_ = pw.CloseWithError(err)
+		wg.Wait()
 		return fmt.Errorf("WriteFolderToVolume: init copy: %w", err)
 	}
 	if err := copyFunc(); err != nil {
 		cancel()
+		_ = pr.CloseWithError(err)
+		_ = pw.CloseWithError(err)
+		wg.Wait()
 		return fmt.Errorf("WriteFolderToVolume: copy archive: %w", err)
 	}
 

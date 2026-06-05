@@ -151,8 +151,8 @@ func InspectContainer(ctx context.Context, containerID string) (*define.InspectC
 
 // HealthCheckContainer returns the container's Status string and an exitCode:
 //   - exitCode == -1 : no health information available
-//   - exitCode ==  0 : healthy or exitCode=0
-//   - exitCode  > 0 : the first nonzero exit code from health logs
+//   - exitCode ==  0 : healthy or latest exitCode=0
+//   - exitCode  > 0 : the latest nonzero exit code from health logs
 func HealthCheckContainer(ctx context.Context, containerID string) (status string, exitCode int, err error) {
 	// 1) Inspect
 	data, err := InspectContainer(ctx, containerID)
@@ -172,14 +172,11 @@ func HealthCheckContainer(ctx context.Context, containerID string) (status strin
 		return status, -1, nil
 	}
 
-	// 로그에서 첫 번째 비정상 exitCode 찾기
-	for _, entry := range data.State.Health.Log {
-		if entry.ExitCode != 0 {
-			return status, entry.ExitCode, nil
-		}
+	latest := data.State.Health.Log[len(data.State.Health.Log)-1]
+	if latest.ExitCode != 0 {
+		return status, latest.ExitCode, nil
 	}
 
-	// 모든 로그가 exitCode==0
 	return status, 0, nil
 }
 

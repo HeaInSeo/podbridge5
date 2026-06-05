@@ -3,16 +3,19 @@ package main
 import (
 	"archive/tar"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 )
 
 const (
@@ -23,6 +26,16 @@ const (
 
 type client struct {
 	conn *ssh.Client
+}
+
+type shellClient struct {
+	cfg config
+}
+
+type remoteClient interface {
+	Close() error
+	Run(cmd string) (string, error)
+	MultipassExec(vmName, cmd string) (string, error)
 }
 
 type config struct {
@@ -38,9 +51,6 @@ func main() {
 	}
 
 	cfg := defaultConfig()
-	if cfg.Password == "" {
-		log.Fatal("set REMOTE_PASS")
-	}
 
 	c, err := dial(cfg)
 	if err != nil {
@@ -51,6 +61,7 @@ func main() {
 	vmName := getenv("PODBRIDGE5_VM_NAME", "podbridge5-dev")
 	vmRepo := getenv("PODBRIDGE5_VM_REPO", "/home/ubuntu/work/src/github.com/HeaInSeo/podbridge5")
 	localRepo := getenv("PODBRIDGE5_LOCAL_REPO", "/opt/go/src/github.com/HeaInSeo/podbridge5")
+	goVersion := getenv("PODBRIDGE5_GO_VERSION", "1.25.5")
 	cpus := getenv("PODBRIDGE5_VM_CPUS", "2")
 	memory := getenv("PODBRIDGE5_VM_MEMORY", "4G")
 	disk := getenv("PODBRIDGE5_VM_DISK", "20G")
@@ -64,12 +75,17 @@ func main() {
 	case "prepare":
 		commands := []string{
 			"set -euo pipefail",
-			"if ! command -v buildah >/dev/null 2>&1 || ! command -v fuse-overlayfs >/dev/null 2>&1 || ! command -v pkg-config >/dev/null 2>&1 || ! pkg-config --exists gpgme >/dev/null 2>&1 || [ ! -f /usr/include/btrfs/version.h ] || ! command -v git >/dev/null 2>&1 || ! command -v go >/dev/null 2>&1 || ! command -v podman >/dev/null 2>&1; then sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y buildah fuse-overlayfs pkg-config libgpgme-dev libbtrfs-dev git golang-go podman; fi",
-			fmt.Sprintf("mkdir -p %s", shellQuote(dirOf(vmRepo))),
+			"current_go_version() { if command -v go >/dev/null 2>&1; then go env GOVERSION 2>/dev/null || go version | cut -d\" \" -f3; else echo missing; fi; }",
+			"if ! command -v buildah >/dev/null 2>&1 || ! command -v fuse-overlayfs >/dev/null 2>&1 || ! command -v pkg-config >/dev/null 2>&1 || ! pkg-config --exists gpgme >/dev/null 2>&1 || [ ! -f /usr/include/btrfs/version.h ] || ! command -v git >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1 || ! command -v tar >/dev/null 2>&1 || ! command -v podman >/dev/null 2>&1 || ! command -v gcc >/dev/null 2>&1; then sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y buildah fuse-overlayfs pkg-config libgpgme-dev libbtrfs-dev git curl tar podman gcc g++; fi",
+			fmt.Sprintf("if [ \"$(current_go_version)\" != %q ]; then curl -fsSL %q -o /tmp/podbridge5-go.tar.gz && sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf /tmp/podbridge5-go.tar.gz && rm -f /tmp/podbridge5-go.tar.gz; fi", "go"+goVersion, fmt.Sprintf("https://go.dev/dl/go%s.linux-amd64.tar.gz", goVersion)),
+			"export PATH=/usr/local/go/bin:$PATH",
+			fmt.Sprintf("[ \"$(current_go_version)\" = %q ]", "go"+goVersion),
+			fmt.Sprintf("mkdir -p %q", dirOf(vmRepo)),
 			"sudo systemctl enable --now podman.socket",
 			"sudo test -S /run/podman/podman.sock",
 			"sudo podman info >/dev/null",
 			"pkg-config --modversion gpgme",
+			"go version",
 		}
 		fmt.Println(mustExec(c, vmName, strings.Join(commands, "; ")))
 	case "sync":
@@ -78,9 +94,19 @@ func main() {
 		}
 		fmt.Printf("synced %s -> %s on %s\n", localRepo, vmRepo, vmName)
 	case "run":
-		fmt.Println(mustExec(c, vmName, fmt.Sprintf("sudo bash -lc 'set -euo pipefail; cd %s; export XDG_RUNTIME_DIR=/run; export CONTAINER_HOST=unix:///run/podman/podman.sock; go test ./...'", shellQuote(vmRepo))))
+		runCmd := strings.Join([]string{
+			"set -euo pipefail",
+			fmt.Sprintf("cd %q", vmRepo),
+			"sudo env PATH=/usr/local/go/bin:$PATH CGO_ENABLED=1 XDG_RUNTIME_DIR=/run CONTAINER_HOST=unix:///run/podman/podman.sock go test ./...",
+		}, "; ")
+		fmt.Println(mustExec(c, vmName, runCmd))
 	case "run-integration":
-		fmt.Println(mustExec(c, vmName, fmt.Sprintf("sudo bash -lc 'set -euo pipefail; cd %s; export XDG_RUNTIME_DIR=/run; export CONTAINER_HOST=unix:///run/podman/podman.sock; unshare -r -m go test -v -tags=integration ./...'", shellQuote(vmRepo))))
+		runCmd := strings.Join([]string{
+			"set -euo pipefail",
+			fmt.Sprintf("cd %q", vmRepo),
+			"sudo env PATH=/usr/local/go/bin:$PATH CGO_ENABLED=1 XDG_RUNTIME_DIR=/run CONTAINER_HOST=unix:///run/podman/podman.sock unshare -r -m go test -v -tags=integration ./...",
+		}, "; ")
+		fmt.Println(mustExec(c, vmName, runCmd))
 	case "delete":
 		run(c, fmt.Sprintf("multipass delete -p %s >/dev/null 2>&1 || true", vmName))
 		run(c, "multipass purge >/dev/null 2>&1 || true")
@@ -90,7 +116,7 @@ func main() {
 	}
 }
 
-func syncWorktree(cfg config, c *client, vmName, localRepo, vmRepo string) error {
+func syncWorktree(cfg config, c remoteClient, vmName, localRepo, vmRepo string) error {
 	archivePath, cleanup, err := archiveWorktree(localRepo, filepath.Base(vmRepo))
 	if err != nil {
 		return err
@@ -114,12 +140,12 @@ func syncWorktree(cfg config, c *client, vmName, localRepo, vmRepo string) error
 
 	commands := []string{
 		"set -euo pipefail",
-		fmt.Sprintf("sudo rm -rf %s", shellQuote(vmRepo)),
-		fmt.Sprintf("sudo mkdir -p %s", shellQuote(dirOf(vmRepo))),
-		fmt.Sprintf("sudo tar -xzf %s -C %s", shellQuote(vmArchive), shellQuote(dirOf(vmRepo))),
-		fmt.Sprintf("sudo chown -R ubuntu:ubuntu %s", shellQuote(dirOf(vmRepo))),
-		fmt.Sprintf("rm -f %s", shellQuote(vmArchive)),
-		fmt.Sprintf("test -f %s/go.mod", shellQuote(vmRepo)),
+		fmt.Sprintf("sudo rm -rf %q", vmRepo),
+		fmt.Sprintf("sudo mkdir -p %q", dirOf(vmRepo)),
+		fmt.Sprintf("sudo tar -xzf %q -C %q", vmArchive, dirOf(vmRepo)),
+		fmt.Sprintf("sudo chown -R ubuntu:ubuntu %q", dirOf(vmRepo)),
+		fmt.Sprintf("rm -f %q", vmArchive),
+		fmt.Sprintf("test -f %q", filepath.Join(vmRepo, "go.mod")),
 	}
 	if _, err := c.MultipassExec(vmName, strings.Join(commands, "; ")); err != nil {
 		return fmt.Errorf("extract synced worktree on %s: %w", vmName, err)
@@ -236,11 +262,13 @@ func archiveWorktree(localRepo, archiveRoot string) (string, func(), error) {
 }
 
 func uploadFile(cfg config, localPath, remotePath string) error {
-	sshCfg := &ssh.ClientConfig{
-		User:            cfg.User,
-		Auth:            []ssh.AuthMethod{ssh.Password(cfg.Password)},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), //nolint:gosec // lab-only machine
-		Timeout:         30 * time.Second,
+	if cfg.Password == "" {
+		return uploadFileWithCLI(cfg, localPath, remotePath)
+	}
+
+	sshCfg, err := newSSHClientConfig(cfg)
+	if err != nil {
+		return err
 	}
 	conn, err := ssh.Dial("tcp", net.JoinHostPort(cfg.Host, cfg.Port), sshCfg)
 	if err != nil {
@@ -281,6 +309,18 @@ func uploadFile(cfg config, localPath, remotePath string) error {
 	return nil
 }
 
+func uploadFileWithCLI(cfg config, localPath, remotePath string) error {
+	target := fmt.Sprintf("%s@%s:%s", cfg.User, cfg.Host, remotePath)
+	args := []string{"-o", "BatchMode=yes", "-P", cfg.Port, localPath, target}
+	cmd := exec.Command("scp", args...)
+	out, err := cmd.CombinedOutput()
+	result := strings.TrimSpace(string(out))
+	if err != nil {
+		return fmt.Errorf("scp upload to %s: %w\n%s", target, err, result)
+	}
+	return nil
+}
+
 func defaultConfig() config {
 	host := getenv("REMOTE_HOST", defaultHost)
 	user := getenv("REMOTE_USER", defaultUser)
@@ -293,18 +333,73 @@ func defaultConfig() config {
 	}
 }
 
-func dial(cfg config) (*client, error) {
-	sshCfg := &ssh.ClientConfig{
-		User:            cfg.User,
-		Auth:            []ssh.AuthMethod{ssh.Password(cfg.Password)},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), //nolint:gosec // lab-only machine
-		Timeout:         30 * time.Second,
+func dial(cfg config) (remoteClient, error) {
+	if cfg.Password == "" {
+		return &shellClient{cfg: cfg}, nil
+	}
+
+	sshCfg, err := newSSHClientConfig(cfg)
+	if err != nil {
+		return nil, err
 	}
 	conn, err := ssh.Dial("tcp", net.JoinHostPort(cfg.Host, cfg.Port), sshCfg)
 	if err != nil {
 		return nil, fmt.Errorf("ssh dial %s: %w", cfg.Host, err)
 	}
 	return &client{conn: conn}, nil
+}
+
+func newSSHClientConfig(cfg config) (*ssh.ClientConfig, error) {
+	auth, err := authMethods(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return &ssh.ClientConfig{
+		User:            cfg.User,
+		Auth:            auth,
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(), //nolint:gosec // lab-only machine
+		Timeout:         30 * time.Second,
+	}, nil
+}
+
+func authMethods(cfg config) ([]ssh.AuthMethod, error) {
+	var methods []ssh.AuthMethod
+
+	if cfg.Password != "" {
+		methods = append(methods, ssh.Password(cfg.Password))
+	}
+
+	if sock := os.Getenv("SSH_AUTH_SOCK"); sock != "" {
+		conn, err := net.Dial("unix", sock)
+		if err == nil {
+			methods = append(methods, ssh.PublicKeysCallback(agent.NewClient(conn).Signers))
+		}
+	}
+
+	for _, candidate := range []string{"id_ed25519", "id_rsa"} {
+		signer, err := loadSigner(candidate)
+		if err == nil {
+			methods = append(methods, ssh.PublicKeys(signer))
+		}
+	}
+
+	if len(methods) == 0 {
+		return nil, errors.New("configure REMOTE_PASS, SSH_AUTH_SOCK, or a default SSH private key")
+	}
+	return methods, nil
+}
+
+func loadSigner(name string) (ssh.Signer, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	keyPath := filepath.Join(home, ".ssh", name)
+	keyData, err := os.ReadFile(keyPath)
+	if err != nil {
+		return nil, err
+	}
+	return ssh.ParsePrivateKey(keyData)
 }
 
 func (c *client) Close() error {
@@ -327,7 +422,27 @@ func (c *client) Run(cmd string) (string, error) {
 }
 
 func (c *client) MultipassExec(vmName, cmd string) (string, error) {
-	return c.Run(fmt.Sprintf("multipass exec %s -- bash -lc %q", vmName, cmd))
+	return c.Run(fmt.Sprintf("multipass exec %s -- bash -lc %s", vmName, shellQuote(cmd)))
+}
+
+func (c *shellClient) Close() error {
+	return nil
+}
+
+func (c *shellClient) Run(cmd string) (string, error) {
+	target := fmt.Sprintf("%s@%s", c.cfg.User, c.cfg.Host)
+	args := []string{"-o", "BatchMode=yes", "-p", c.cfg.Port, target, cmd}
+	command := exec.Command("ssh", args...)
+	out, err := command.CombinedOutput()
+	result := strings.TrimSpace(string(out))
+	if err != nil {
+		return result, fmt.Errorf("ssh cmd %q: %w\n%s", cmd, err, result)
+	}
+	return result, nil
+}
+
+func (c *shellClient) MultipassExec(vmName, cmd string) (string, error) {
+	return c.Run(fmt.Sprintf("multipass exec %s -- bash -lc %s", vmName, shellQuote(cmd)))
 }
 
 func getenv(key, fallback string) string {
@@ -349,13 +464,13 @@ func shellQuote(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", `"'"'`) + "'"
 }
 
-func run(c *client, cmd string) {
+func run(c remoteClient, cmd string) {
 	if _, err := c.Run(cmd); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func mustRun(c *client, cmd string) string {
+func mustRun(c remoteClient, cmd string) string {
 	out, err := c.Run(cmd)
 	if err != nil {
 		log.Fatal(err)
@@ -363,7 +478,7 @@ func mustRun(c *client, cmd string) string {
 	return out
 }
 
-func mustExec(c *client, vmName, script string) string {
+func mustExec(c remoteClient, vmName, script string) string {
 	out, err := c.MultipassExec(vmName, script)
 	if err != nil {
 		log.Fatal(err)

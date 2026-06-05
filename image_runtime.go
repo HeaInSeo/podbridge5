@@ -41,7 +41,7 @@ func (realImageBuildRuntime) PushImage(ctx context.Context, store storage.Store,
 	_, manifestDigest, err := buildah.Push(ctx, imageRef, destRef, buildah.PushOptions{
 		Store: store,
 		SystemContext: &imageTypes.SystemContext{
-			DockerInsecureSkipTLSVerify: imageTypes.OptionalBoolTrue,
+			DockerInsecureSkipTLSVerify: imageTypes.OptionalBoolFalse,
 		},
 	})
 	if err != nil {

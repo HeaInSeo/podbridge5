@@ -257,7 +257,7 @@ func ProcessScript(scriptContent string, path string) (string, error) {
 		return "", fmt.Errorf("failed to move temp file to final location: %w", err)
 	}
 
-	if err = os.Chmod(shFilePath, 0777); err != nil {
+	if err = os.Chmod(shFilePath, 0755); err != nil {
 		return "", fmt.Errorf("failed to set file permissions: %w", err)
 	}
 

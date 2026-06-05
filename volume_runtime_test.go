@@ -11,8 +11,8 @@ func TestNewVolumeWriterSpec(t *testing.T) {
 	if spec.Image != volumeTransferImage {
 		t.Fatalf("spec.Image = %q, want %q", spec.Image, volumeTransferImage)
 	}
-	if spec.Name != volumeWriterContainerName {
-		t.Fatalf("spec.Name = %q, want %q", spec.Name, volumeWriterContainerName)
+	if spec.Name == volumeWriterContainerNamePrefix || spec.Name == "" {
+		t.Fatalf("spec.Name = %q, want unique temp container name", spec.Name)
 	}
 	if got := spec.Env["MOUNT"]; got != "/data" {
 		t.Fatalf("spec.Env[MOUNT] = %q, want /data", got)
@@ -40,8 +40,8 @@ func TestNewVolumeReaderSpec(t *testing.T) {
 	if spec.Image != volumeTransferImage {
 		t.Fatalf("spec.Image = %q, want %q", spec.Image, volumeTransferImage)
 	}
-	if spec.Name != volumeReaderContainerName {
-		t.Fatalf("spec.Name = %q, want %q", spec.Name, volumeReaderContainerName)
+	if spec.Name == volumeReaderContainerNamePrefix || spec.Name == "" {
+		t.Fatalf("spec.Name = %q, want unique temp container name", spec.Name)
 	}
 	if len(spec.Command) != 3 {
 		t.Fatalf("len(spec.Command) = %d, want 3", len(spec.Command))
@@ -54,5 +54,13 @@ func TestNewVolumeReaderSpec(t *testing.T) {
 	}
 	if spec.Volumes[0].Name != "demo-volume" || spec.Volumes[0].Dest != "/cache" {
 		t.Fatalf("unexpected volume mapping: %+v", spec.Volumes[0])
+	}
+}
+
+func TestUniqueTempContainerName(t *testing.T) {
+	first := uniqueTempContainerName("tmp")
+	second := uniqueTempContainerName("tmp")
+	if first == second {
+		t.Fatalf("expected unique names, got %q and %q", first, second)
 	}
 }

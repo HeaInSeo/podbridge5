@@ -17,9 +17,11 @@ type fakeContainerRuntime struct {
 	createResp         *entitiesTypes.ContainerCreateResponse
 	createErr          error
 	startErr           error
+	removeErr          error
 	inspectResp        *define.InspectContainerData
 	inspectErr         error
 	startedID          string
+	removedID          string
 	ensuredImage       string
 	createdSpec        *specgen.SpecGenerator
 }
@@ -44,6 +46,11 @@ func (f *fakeContainerRuntime) CreateContainer(_ context.Context, spec *specgen.
 func (f *fakeContainerRuntime) StartContainer(_ context.Context, containerID string) error {
 	f.startedID = containerID
 	return f.startErr
+}
+
+func (f *fakeContainerRuntime) RemoveContainer(_ context.Context, containerID string) error {
+	f.removedID = containerID
+	return f.removeErr
 }
 
 func (f *fakeContainerRuntime) InspectContainer(context.Context, string) (*define.InspectContainerData, error) {
@@ -97,10 +104,10 @@ func TestCreateContainerWithRuntime_CreatesNewContainer(t *testing.T) {
 	}
 }
 
-func TestCreateContainerWithRuntime_ReusesExistingContainer(t *testing.T) {
+func TestCreateContainerWithRuntime_ExistingContainerReturnsError(t *testing.T) {
 	runtime := &fakeContainerRuntime{
 		containerExists: true,
-		inspectResp:     &define.InspectContainerData{ID: "existing-id", State: &define.InspectContainerState{Running: true}},
+		inspectResp:     &define.InspectContainerData{ID: "existing-id", Image: "docker.io/library/busybox:latest", State: &define.InspectContainerState{Running: true}},
 	}
 	spec, err := NewSpec(WithImageName("docker.io/library/alpine:latest"), WithName("demo-container"))
 	if err != nil {
@@ -108,11 +115,14 @@ func TestCreateContainerWithRuntime_ReusesExistingContainer(t *testing.T) {
 	}
 
 	got, err := createContainerWithRuntime(context.Background(), runtime, spec)
-	if err != nil {
-		t.Fatalf("createContainerWithRuntime() error = %v", err)
+	if err == nil {
+		t.Fatalf("createContainerWithRuntime() error = nil, want existing container error")
 	}
-	if got.ID != "existing-id" || got.Status != Running {
-		t.Fatalf("unexpected reused result: %+v", got)
+	if !errors.Is(err, ErrContainerAlreadyExists) {
+		t.Fatalf("createContainerWithRuntime() error = %v, want ErrContainerAlreadyExists", err)
+	}
+	if got != nil {
+		t.Fatalf("expected nil result, got %+v", got)
 	}
 	if runtime.ensuredImage != "" {
 		t.Fatalf("EnsureImage should not be called for existing container")
@@ -148,5 +158,8 @@ func TestStartContainerWithRuntime_PropagatesStartError(t *testing.T) {
 	_, err = startContainerWithRuntime(context.Background(), runtime, spec)
 	if err == nil || err.Error() != "boom" {
 		t.Fatalf("startContainerWithRuntime() error = %v, want boom", err)
+	}
+	if runtime.removedID != "start-id" {
+		t.Fatalf("RemoveContainer called with %q, want start-id", runtime.removedID)
 	}
 }

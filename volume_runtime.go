@@ -3,16 +3,18 @@ package podbridge5
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/containers/podman/v5/pkg/bindings/containers"
 	"github.com/containers/podman/v5/pkg/bindings/images"
 	"github.com/containers/podman/v5/pkg/specgen"
+	"github.com/google/uuid"
 )
 
 const (
-	volumeTransferImage       = "docker.io/library/alpine:latest"
-	volumeWriterContainerName = "temp-folder-writer"
-	volumeReaderContainerName = "temp-data-reader"
+	volumeTransferImage             = "docker.io/library/alpine:latest"
+	volumeWriterContainerNamePrefix = "temp-folder-writer"
+	volumeReaderContainerNamePrefix = "temp-data-reader"
 )
 
 type volumeContainerRuntime interface {
@@ -71,7 +73,7 @@ func (podmanVolumeContainerRuntime) RemoveContainer(ctx context.Context, contain
 func newVolumeWriterSpec(volumeName, mountPath string) (*specgen.SpecGenerator, error) {
 	return NewSpec(
 		WithImageName(volumeTransferImage),
-		WithName(volumeWriterContainerName),
+		WithName(uniqueTempContainerName(volumeWriterContainerNamePrefix)),
 		WithEnv("MOUNT", mountPath),
 		WithCommand([]string{
 			"sh", "-c",
@@ -84,7 +86,7 @@ func newVolumeWriterSpec(volumeName, mountPath string) (*specgen.SpecGenerator, 
 func newVolumeReaderSpec(volumeName, mountPath string) (*specgen.SpecGenerator, error) {
 	return NewSpec(
 		WithImageName(volumeTransferImage),
-		WithName(volumeReaderContainerName),
+		WithName(uniqueTempContainerName(volumeReaderContainerNamePrefix)),
 		WithCommand([]string{"sh", "-c", "mkdir -p /data && sleep infinity"}),
 		WithNamedVolume(volumeName, mountPath, ""),
 	)
@@ -101,10 +103,13 @@ func startVolumeContainer(ctx context.Context, runtime volumeContainerRuntime, s
 	}
 
 	cleanup := func() {
-		if stopErr := runtime.StopContainer(ctx, containerID); stopErr != nil {
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		if stopErr := runtime.StopContainer(cleanupCtx, containerID); stopErr != nil {
 			Log.Warnf("stop container %s: %v", containerID, stopErr)
 		}
-		if rmErr := runtime.RemoveContainer(ctx, containerID); rmErr != nil {
+		if rmErr := runtime.RemoveContainer(cleanupCtx, containerID); rmErr != nil {
 			Log.Warnf("remove container %s: %v", containerID, rmErr)
 		}
 	}
@@ -115,4 +120,8 @@ func startVolumeContainer(ctx context.Context, runtime volumeContainerRuntime, s
 	}
 
 	return containerID, cleanup, nil
+}
+
+func uniqueTempContainerName(prefix string) string {
+	return fmt.Sprintf("%s-%s", prefix, uuid.NewString())
 }

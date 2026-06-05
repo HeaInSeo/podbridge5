@@ -759,10 +759,9 @@ func HealthCheckContainerTest(ctx context.Context, containerID string) (status s
 		return status, -1, nil
 	}
 
-	for _, entry := range data.State.Health.Log {
-		if entry.ExitCode != 0 {
-			return status, entry.ExitCode, nil
-		}
+	latest := data.State.Health.Log[len(data.State.Health.Log)-1]
+	if latest.ExitCode != 0 {
+		return status, latest.ExitCode, nil
 	}
 
 	return status, 0, nil
@@ -806,7 +805,7 @@ func TestHealthCheckContainer(t *testing.T) {
 			wantErr:      false,
 		},
 		{
-			name: "First unhealthy exit code",
+			name: "Latest unhealthy exit code",
 			mockData: &define.InspectContainerData{State: &define.InspectContainerState{
 				Status: "running",
 				Health: &define.HealthCheckResults{Log: []define.HealthCheckLog{{ExitCode: 0}, {ExitCode: 2}}},
@@ -821,6 +820,17 @@ func TestHealthCheckContainer(t *testing.T) {
 			mockData: &define.InspectContainerData{State: &define.InspectContainerState{
 				Status: "running",
 				Health: &define.HealthCheckResults{Log: []define.HealthCheckLog{{ExitCode: 0}, {ExitCode: 0}}},
+			}},
+			mockErr:      nil,
+			wantStatus:   "running",
+			wantExitCode: 0,
+			wantErr:      false,
+		},
+		{
+			name: "Latest log wins over stale failure",
+			mockData: &define.InspectContainerData{State: &define.InspectContainerState{
+				Status: "running",
+				Health: &define.HealthCheckResults{Log: []define.HealthCheckLog{{ExitCode: 2}, {ExitCode: 0}}},
 			}},
 			mockErr:      nil,
 			wantStatus:   "running",

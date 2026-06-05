@@ -67,7 +67,7 @@ func TestSetFilePermissionsWithRuntime(t *testing.T) {
 	if err := setFilePermissionsWithRuntime(builder, []string{"/app/executor.sh", "/app/healthcheck.sh"}); err != nil {
 		t.Fatalf("setFilePermissionsWithRuntime() error = %v", err)
 	}
-	want := [][]string{{"chmod", "777", "/app/executor.sh", "/app/healthcheck.sh"}}
+	want := [][]string{{"chmod", "755", "/app/executor.sh", "/app/healthcheck.sh"}}
 	if !reflect.DeepEqual(builder.runCommands, want) {
 		t.Fatalf("run commands = %#v, want %#v", builder.runCommands, want)
 	}

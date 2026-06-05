@@ -20,6 +20,7 @@ type fakeImageBuildRuntime struct {
 	pushErr         error
 	pushImageRef    string
 	pushDestination string
+	pushSecureTLS   bool
 }
 
 func (f *fakeImageBuildRuntime) BuildDockerfiles(_ context.Context, _ storage.Store, options define.BuildOptions, dockerfilePath string) (string, string, error) {
@@ -31,6 +32,7 @@ func (f *fakeImageBuildRuntime) BuildDockerfiles(_ context.Context, _ storage.St
 func (f *fakeImageBuildRuntime) PushImage(_ context.Context, _ storage.Store, imageRef, normalizedDestination string) (string, error) {
 	f.pushImageRef = imageRef
 	f.pushDestination = normalizedDestination
+	f.pushSecureTLS = true
 	return f.pushDigest, f.pushErr
 }
 
