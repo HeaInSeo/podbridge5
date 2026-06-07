@@ -27,11 +27,17 @@ REMOTE_VM_RUN = \
 	runtime-host-check runtime-integration-host-check check-remote-auth \
 	vm-create-runtime vm-prepare-runtime vm-sync-runtime vm-run-runtime \
 	vm-run-runtime-integration vm-delete-runtime vm-test-runtime \
-	vm-test-runtime-integration
+	vm-test-runtime-integration lint lint-fix
 
 TEST_TAGS_BASE ?= exclude_graphdriver_btrfs containers_image_openpgp exclude_graphdriver_devicemapper
 TEST_TAGS_RUNTIME ?= $(TEST_TAGS_BASE) runtime
 TEST_TAGS_RUNTIME_INTEGRATION ?= $(TEST_TAGS_BASE) runtime integration
+
+lint: go-version-check
+	golangci-lint run --build-tags "$(TEST_TAGS_BASE)"
+
+lint-fix: go-version-check
+	golangci-lint run --build-tags "$(TEST_TAGS_BASE)" --fix
 
 # Legacy alias kept for compatibility.
 test: test-unit

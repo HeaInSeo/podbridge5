@@ -1,0 +1,119 @@
+name: VM Runtime Tests
+
+# ── 실행 구조 ─────────────────────────────────────────────────────
+# self-hosted runner를 REMOTE_HOST(multipass 장비)에 직접 설치해 사용.
+# 러너는 github.com으로 아웃바운드만 연결하므로 Tailscale/방화벽 인바운드
+# 포트 오픈이 불필요하고 GitHub Actions 요금도 0원.
+#
+# 러너 설치 (원격 장비에서 한 번만):
+#   https://github.com/HeaInSeo/podbridge5/settings/actions/runners/new
+#   레이블(label)에 'podbridge5' 포함해서 등록.
+#
+# make vm-test-runtime은 REMOTE_HOST=127.0.0.1로 자기 자신에게 SSH 접속해
+# multipass로 podbridge5-dev VM을 생성/동기화/테스트/삭제한다.
+#
+# 필수 GitHub Secrets (원격 장비 자신에 대한 접속 정보):
+#   VM_SSH_PRIVATE_KEY  — 원격 장비 → 자기 자신(127.0.0.1) SSH용 키
+#                         (ssh-copy-id로 authorized_keys에 등록)
+#   VM_REMOTE_USER      — SSH 사용자 (예: seoy)
+#   VM_REMOTE_PORT      — SSH 포트 (선택, 기본 22)
+# ─────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_integration:
+        description: "integration 테스트도 실행 (unshare 필요)"
+        type: boolean
+        default: false
+      vm_name:
+        description: "VM 이름 (기본값: podbridge5-dev)"
+        type: string
+        default: "podbridge5-dev"
+      vm_cpus:
+        description: "VM CPU 수"
+        type: string
+        default: "2"
+      vm_memory:
+        description: "VM 메모리"
+        type: string
+        default: "4G"
+
+  # 주간 자동 실행 (월요일 KST 12:00 = UTC 03:00)
+  schedule:
+    - cron: "0 3 * * 1"
+
+permissions:
+  contents: read
+
+# VM 수명주기 중간에 취소하면 VM이 고아 상태로 남을 수 있어 false
+concurrency:
+  group: vm-runtime-test
+  cancel-in-progress: false
+
+jobs:
+  vm-runtime-test:
+    name: Runtime Tests (podbridge5-dev VM)
+    # self-hosted runner — 원격 장비에 설치한 러너 사용 (비용 0)
+    runs-on: [self-hosted, linux, podbridge5]
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # SSH agent 설정 — Makefile check-remote-auth가 SSH_AUTH_SOCK을 감지
+      # 원격 장비에서 자기 자신(127.0.0.1)으로 SSH 접속하므로 localhost 키 필요
+      - name: Configure SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VM_SSH_PRIVATE_KEY }}
+
+      - name: Add localhost to known_hosts
+        run: |
+          port="${{ secrets.VM_REMOTE_PORT }}"
+          port="${port:-22}"
+          ssh-keyscan -p "$port" 127.0.0.1 >> ~/.ssh/known_hosts 2>/dev/null
+
+      # ── 런타임 테스트 ───────────────────────────────────────────
+      # REMOTE_HOST=127.0.0.1 — 러너가 실행 중인 장비(multipass 호스트)에 SSH
+      - name: Run VM runtime tests
+        env:
+          REMOTE_USER: ${{ secrets.VM_REMOTE_USER }}
+          REMOTE_PORT: ${{ secrets.VM_REMOTE_PORT || '22' }}
+          PODBRIDGE5_VM_NAME: ${{ inputs.vm_name || 'podbridge5-dev' }}
+          PODBRIDGE5_VM_CPUS: ${{ inputs.vm_cpus || '2' }}
+          PODBRIDGE5_VM_MEMORY: ${{ inputs.vm_memory || '4G' }}
+        run: |
+          make vm-test-runtime \
+            REMOTE_HOST=127.0.0.1 \
+            REMOTE_USER="$REMOTE_USER" \
+            REMOTE_PORT="$REMOTE_PORT" \
+            PODBRIDGE5_VM_NAME="$PODBRIDGE5_VM_NAME" \
+            PODBRIDGE5_VM_CPUS="$PODBRIDGE5_VM_CPUS" \
+            PODBRIDGE5_VM_MEMORY="$PODBRIDGE5_VM_MEMORY"
+
+      # ── integration 테스트 ────────────────────────────────────────
+      - name: Run VM runtime integration tests
+        if: ${{ inputs.run_integration == true || github.event_name == 'schedule' }}
+        env:
+          REMOTE_USER: ${{ secrets.VM_REMOTE_USER }}
+          REMOTE_PORT: ${{ secrets.VM_REMOTE_PORT || '22' }}
+          PODBRIDGE5_VM_NAME: ${{ inputs.vm_name || 'podbridge5-dev' }}
+          PODBRIDGE5_VM_CPUS: ${{ inputs.vm_cpus || '2' }}
+          PODBRIDGE5_VM_MEMORY: ${{ inputs.vm_memory || '4G' }}
+        run: |
+          make vm-test-runtime-integration \
+            REMOTE_HOST=127.0.0.1 \
+            REMOTE_USER="$REMOTE_USER" \
+            REMOTE_PORT="$REMOTE_PORT" \
+            PODBRIDGE5_VM_NAME="$PODBRIDGE5_VM_NAME" \
+            PODBRIDGE5_VM_CPUS="$PODBRIDGE5_VM_CPUS" \
+            PODBRIDGE5_VM_MEMORY="$PODBRIDGE5_VM_MEMORY"
+
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vm-test-logs-${{ github.run_id }}
+          path: artifacts/
+          retention-days: 30

@@ -1,0 +1,163 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# ── 실행 환경 ─────────────────────────────────────────────────────
+# 모든 job을 self-hosted runner에서 실행 → GitHub Actions 요금 0원.
+# 러너 설치: https://github.com/HeaInSeo/podbridge5/settings/actions/runners/new
+# 레이블 'podbridge5' 포함해서 등록.
+# ─────────────────────────────────────────────────────────────────
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUILD_TAGS: "exclude_graphdriver_btrfs containers_image_openpgp exclude_graphdriver_devicemapper"
+  GO_VERSION_FILE: go.mod
+
+jobs:
+  # ────────────────────────────────────────────────────────────────
+  # 1. 린트 (gosec 포함)
+  # ────────────────────────────────────────────────────────────────
+  lint:
+    name: Lint (golangci-lint + gosec)
+    runs-on: [self-hosted, linux, podbridge5]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ env.GO_VERSION_FILE }}
+          cache: true
+
+      # 머신에 이미 설치되어 있으면 no-op; 없으면 설치
+      - name: Ensure CGo system dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends \
+            libgpgme-dev \
+            libassuan-dev \
+            libbtrfs-dev \
+            libdevmapper-dev \
+            libseccomp-dev \
+            pkg-config
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: >-
+            --build-tags "${{ env.BUILD_TAGS }}"
+            --timeout 10m
+
+  # ────────────────────────────────────────────────────────────────
+  # 2. 빌드 검증
+  # ────────────────────────────────────────────────────────────────
+  build:
+    name: Build
+    runs-on: [self-hosted, linux, podbridge5]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ env.GO_VERSION_FILE }}
+          cache: true
+
+      - name: Ensure CGo system dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends \
+            libgpgme-dev \
+            libassuan-dev \
+            libbtrfs-dev \
+            libdevmapper-dev \
+            libseccomp-dev \
+            pkg-config
+
+      - name: go build
+        run: go build -tags "${{ env.BUILD_TAGS }}" ./...
+
+      - name: go vet
+        run: go vet -tags "${{ env.BUILD_TAGS }}" ./...
+
+  # ────────────────────────────────────────────────────────────────
+  # 3. 유닛 테스트 (podman/buildah 런타임 불필요)
+  # ────────────────────────────────────────────────────────────────
+  test-unit:
+    name: Unit Tests
+    runs-on: [self-hosted, linux, podbridge5]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ env.GO_VERSION_FILE }}
+          cache: true
+
+      - name: Ensure CGo system dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends \
+            libgpgme-dev \
+            libassuan-dev \
+            libbtrfs-dev \
+            libdevmapper-dev \
+            libseccomp-dev \
+            pkg-config
+
+      - name: go test (unit, -race, -cover)
+        run: |
+          go test \
+            -v \
+            -race \
+            -cover \
+            -coverprofile=coverage.out \
+            -tags "${{ env.BUILD_TAGS }}" \
+            ./...
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-${{ github.run_id }}
+          path: coverage.out
+          retention-days: 14
+
+  # ────────────────────────────────────────────────────────────────
+  # 4. 취약점 스캔 (Go vuln DB)
+  # ────────────────────────────────────────────────────────────────
+  vuln-scan:
+    name: Vulnerability Scan (govulncheck)
+    runs-on: [self-hosted, linux, podbridge5]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ env.GO_VERSION_FILE }}
+          cache: true
+
+      - name: Ensure CGo system dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends \
+            libgpgme-dev \
+            libassuan-dev \
+            libbtrfs-dev \
+            libdevmapper-dev \
+            libseccomp-dev \
+            pkg-config
+
+      - name: govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck -tags "${{ env.BUILD_TAGS }}" ./...
