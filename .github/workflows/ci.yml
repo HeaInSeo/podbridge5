@@ -39,16 +39,19 @@ jobs:
           cache: true
 
       # 머신에 이미 설치되어 있으면 no-op; 없으면 설치
+      # Rocky Linux(dnf) / Ubuntu(apt-get) 모두 지원
       - name: Ensure CGo system dependencies
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y --no-install-recommends \
-            libgpgme-dev \
-            libassuan-dev \
-            libbtrfs-dev \
-            libdevmapper-dev \
-            libseccomp-dev \
-            pkg-config
+          if command -v dnf >/dev/null 2>&1; then
+            sudo dnf install -y --enablerepo=powertools \
+              gpgme-devel libassuan-devel device-mapper-devel libseccomp-devel \
+              pkgconf-pkg-config
+          else
+            sudo apt-get update -q
+            sudo apt-get install -y --no-install-recommends \
+              libgpgme-dev libassuan-dev libbtrfs-dev \
+              libdevmapper-dev libseccomp-dev pkg-config
+          fi
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6

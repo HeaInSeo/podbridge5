@@ -1,20 +1,15 @@
 name: VM Runtime Tests
 
 # ── 실행 구조 ─────────────────────────────────────────────────────
-# self-hosted runner를 REMOTE_HOST(multipass 장비)에 직접 설치해 사용.
+# self-hosted runner를 원격 테스트 장비(100.123.80.48, multipass 호스트)에 설치.
 # 러너는 github.com으로 아웃바운드만 연결하므로 Tailscale/방화벽 인바운드
 # 포트 오픈이 불필요하고 GitHub Actions 요금도 0원.
-#
-# 러너 설치 (원격 장비에서 한 번만):
-#   https://github.com/HeaInSeo/podbridge5/settings/actions/runners/new
-#   레이블(label)에 'podbridge5' 포함해서 등록.
 #
 # make vm-test-runtime은 REMOTE_HOST=127.0.0.1로 자기 자신에게 SSH 접속해
 # multipass로 podbridge5-dev VM을 생성/동기화/테스트/삭제한다.
 #
-# 필수 GitHub Secrets (원격 장비 자신에 대한 접속 정보):
-#   VM_SSH_PRIVATE_KEY  — 원격 장비 → 자기 자신(127.0.0.1) SSH용 키
-#                         (ssh-copy-id로 authorized_keys에 등록)
+# 필수 GitHub Secrets:
+#   VM_SSH_PRIVATE_KEY  — 원격 장비 → localhost SSH용 키 (ssh-copy-id로 등록)
 #   VM_REMOTE_USER      — SSH 사용자 (예: seoy)
 #   VM_REMOTE_PORT      — SSH 포트 (선택, 기본 22)
 # ─────────────────────────────────────────────────────────────────
@@ -75,7 +70,7 @@ jobs:
           ssh-keyscan -p "$port" 127.0.0.1 >> ~/.ssh/known_hosts 2>/dev/null
 
       # ── 런타임 테스트 ───────────────────────────────────────────
-      # REMOTE_HOST=127.0.0.1 — 러너가 실행 중인 장비(multipass 호스트)에 SSH
+      # REMOTE_HOST=127.0.0.1: 러너가 실행 중인 장비(multipass 호스트)에 SSH
       - name: Run VM runtime tests
         env:
           REMOTE_USER: ${{ secrets.VM_REMOTE_USER }}
