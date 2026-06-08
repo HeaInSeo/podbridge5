@@ -8,8 +8,7 @@ on:
 
 # ── 실행 환경 ─────────────────────────────────────────────────────
 # 모든 job을 self-hosted runner에서 실행 → GitHub Actions 요금 0원.
-# 러너 설치: https://github.com/HeaInSeo/podbridge5/settings/actions/runners/new
-# 레이블 'podbridge5' 포함해서 등록.
+# 러너: Rocky Linux 8 원격 장비(100.123.80.48)에 설치된 podbridge5-runner
 # ─────────────────────────────────────────────────────────────────
 
 permissions:
@@ -38,25 +37,29 @@ jobs:
           go-version-file: ${{ env.GO_VERSION_FILE }}
           cache: true
 
-      # 머신에 이미 설치되어 있으면 no-op; 없으면 설치
-      # Rocky Linux(dnf) / Ubuntu(apt-get) 모두 지원
+      # 절대경로로 패키지 매니저를 확인 (PATH 순서에 의존하는 command -v 대신)
       - name: Ensure CGo system dependencies
         run: |
-          if command -v dnf >/dev/null 2>&1; then
-            sudo dnf install -y --enablerepo=powertools \
-              gpgme-devel libassuan-devel device-mapper-devel libseccomp-devel \
-              pkgconf-pkg-config
-          else
-            sudo apt-get update -q
-            sudo apt-get install -y --no-install-recommends \
+          if [ -x /usr/bin/dnf ]; then
+            sudo /usr/bin/dnf install -y --enablerepo=powertools \
+              gpgme-devel libassuan-devel device-mapper-devel \
+              libseccomp-devel pkgconf-pkg-config
+          elif [ -x /usr/bin/apt-get ]; then
+            sudo /usr/bin/apt-get update -q
+            sudo /usr/bin/apt-get install -y --no-install-recommends \
               libgpgme-dev libassuan-dev libbtrfs-dev \
               libdevmapper-dev libseccomp-dev pkg-config
+          else
+            echo "Unsupported package manager" >&2; exit 1
           fi
 
+      # install-mode: goinstall — 시스템 Go(1.25.5)로 소스 빌드.
+      # 바이너리 릴리스는 go1.24로 빌드돼 go1.25.5 프로젝트를 처리 못함.
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
           version: latest
+          install-mode: goinstall
           args: >-
             --build-tags "${{ env.BUILD_TAGS }}"
             --timeout 10m
@@ -77,14 +80,18 @@ jobs:
 
       - name: Ensure CGo system dependencies
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y --no-install-recommends \
-            libgpgme-dev \
-            libassuan-dev \
-            libbtrfs-dev \
-            libdevmapper-dev \
-            libseccomp-dev \
-            pkg-config
+          if [ -x /usr/bin/dnf ]; then
+            sudo /usr/bin/dnf install -y --enablerepo=powertools \
+              gpgme-devel libassuan-devel device-mapper-devel \
+              libseccomp-devel pkgconf-pkg-config
+          elif [ -x /usr/bin/apt-get ]; then
+            sudo /usr/bin/apt-get update -q
+            sudo /usr/bin/apt-get install -y --no-install-recommends \
+              libgpgme-dev libassuan-dev libbtrfs-dev \
+              libdevmapper-dev libseccomp-dev pkg-config
+          else
+            echo "Unsupported package manager" >&2; exit 1
+          fi
 
       - name: go build
         run: go build -tags "${{ env.BUILD_TAGS }}" ./...
@@ -108,14 +115,18 @@ jobs:
 
       - name: Ensure CGo system dependencies
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y --no-install-recommends \
-            libgpgme-dev \
-            libassuan-dev \
-            libbtrfs-dev \
-            libdevmapper-dev \
-            libseccomp-dev \
-            pkg-config
+          if [ -x /usr/bin/dnf ]; then
+            sudo /usr/bin/dnf install -y --enablerepo=powertools \
+              gpgme-devel libassuan-devel device-mapper-devel \
+              libseccomp-devel pkgconf-pkg-config
+          elif [ -x /usr/bin/apt-get ]; then
+            sudo /usr/bin/apt-get update -q
+            sudo /usr/bin/apt-get install -y --no-install-recommends \
+              libgpgme-dev libassuan-dev libbtrfs-dev \
+              libdevmapper-dev libseccomp-dev pkg-config
+          else
+            echo "Unsupported package manager" >&2; exit 1
+          fi
 
       - name: go test (unit, -race, -cover)
         run: |
@@ -151,14 +162,18 @@ jobs:
 
       - name: Ensure CGo system dependencies
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y --no-install-recommends \
-            libgpgme-dev \
-            libassuan-dev \
-            libbtrfs-dev \
-            libdevmapper-dev \
-            libseccomp-dev \
-            pkg-config
+          if [ -x /usr/bin/dnf ]; then
+            sudo /usr/bin/dnf install -y --enablerepo=powertools \
+              gpgme-devel libassuan-devel device-mapper-devel \
+              libseccomp-devel pkgconf-pkg-config
+          elif [ -x /usr/bin/apt-get ]; then
+            sudo /usr/bin/apt-get update -q
+            sudo /usr/bin/apt-get install -y --no-install-recommends \
+              libgpgme-dev libassuan-dev libbtrfs-dev \
+              libdevmapper-dev libseccomp-dev pkg-config
+          else
+            echo "Unsupported package manager" >&2; exit 1
+          fi
 
       - name: govulncheck
         run: |
