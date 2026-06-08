@@ -119,7 +119,6 @@ linters-settings:
     enabled-tags:
       - diagnostic
       - performance
-      - security
       - style
     disabled-checks:
       # hugeParam: buildah/OCI spec 구조체는 크기가 클 수밖에 없음

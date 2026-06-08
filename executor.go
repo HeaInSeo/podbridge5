@@ -221,8 +221,8 @@ func ProcessScript(scriptContent string, path string) (string, error) {
 		return "", fmt.Errorf("failed to write script content to txt file: %w", err)
 	}
 
-	// 임시 파일 생성
-	tmpFile, err := os.CreateTemp("/tmp", "user_script_*.sh")
+	// 임시 파일은 목적지와 같은 디렉터리에 생성해야 os.Rename이 EXDEV 없이 작동
+	tmpFile, err := os.CreateTemp(path, "user_script_*.sh")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file: %w", err)
 	}
