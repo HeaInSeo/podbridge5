@@ -149,15 +149,19 @@ func TestStartContainerWithRuntime_StartsCreatedContainer(t *testing.T) {
 }
 
 func TestStartContainerWithRuntime_PropagatesStartError(t *testing.T) {
-	runtime := &fakeContainerRuntime{createResp: &entitiesTypes.ContainerCreateResponse{ID: "start-id"}, startErr: errors.New("boom")}
+	startErr := errors.New("boom")
+	runtime := &fakeContainerRuntime{createResp: &entitiesTypes.ContainerCreateResponse{ID: "start-id"}, startErr: startErr}
 	spec, err := NewSpec(WithImageName("docker.io/library/alpine:latest"), WithName("demo-container"))
 	if err != nil {
 		t.Fatalf("NewSpec() error = %v", err)
 	}
 
 	_, err = startContainerWithRuntime(context.Background(), runtime, spec)
-	if err == nil || err.Error() != "boom" {
-		t.Fatalf("startContainerWithRuntime() error = %v, want boom", err)
+	if err == nil {
+		t.Fatalf("startContainerWithRuntime() error = nil, want non-nil")
+	}
+	if !errors.Is(err, startErr) {
+		t.Fatalf("startContainerWithRuntime() error = %v, want error wrapping %v", err, startErr)
 	}
 	if runtime.removedID != "start-id" {
 		t.Fatalf("RemoveContainer called with %q, want start-id", runtime.removedID)

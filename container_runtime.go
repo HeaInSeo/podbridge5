@@ -127,16 +127,17 @@ func createContainerWithRuntime(ctx context.Context, runtime containerRuntime, c
 		return nil, fmt.Errorf("%w: name=%s existing_id=%s existing_image=%s expected_image=%s", ErrContainerAlreadyExists, conSpec.Name, info.ID, info.Image, conSpec.Image)
 	}
 
-	if err := runtime.EnsureImage(ctx, conSpec.Image); err != nil {
+	err = runtime.EnsureImage(ctx, conSpec.Image)
+	if err != nil {
 		Log.Errorf("Failed to ensure image: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("ensure image %q: %w", conSpec.Image, err)
 	}
 
 	Log.Infof("Creating %s container using %s image...", conSpec.Name, conSpec.Image)
 	createResponse, err := runtime.CreateContainer(ctx, conSpec)
 	if err != nil {
 		Log.Errorf("Failed to create container: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("create container: %w", err)
 	}
 
 	return &CreateContainerResult{
@@ -148,20 +149,11 @@ func createContainerWithRuntime(ctx context.Context, runtime containerRuntime, c
 }
 
 func inspectContainerWithRuntime(ctx context.Context, runtime containerRuntime, containerID string) (*define.InspectContainerData, error) {
-	return runtime.InspectContainer(ctx, containerID)
-}
-
-func handleExistingContainerWithRuntime(ctx context.Context, runtime containerRuntime, containerName string) (*CreateContainerResult, error) {
-	info, err := runtime.InspectContainer(ctx, containerName)
+	data, err := runtime.InspectContainer(ctx, containerID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("inspect container %q: %w", containerID, err)
 	}
-
-	return &CreateContainerResult{
-		Name:   containerName,
-		ID:     info.ID,
-		Status: containerStatusFromInspectState(info.State),
-	}, nil
+	return data, nil
 }
 
 func containerStatusFromInspectState(state *define.InspectContainerState) ContainerStatus {

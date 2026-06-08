@@ -3,11 +3,12 @@ package podbridge5
 import (
 	"bytes"
 	"fmt"
-	"github.com/seoyhaein/utils"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/seoyhaein/utils"
 )
 
 // GenerateExecutor path 생성될 executor.sh 의 path, fileName "executor.sh", userScriptPath 컨테이너내에서 executor.sh 가 실행 할 user_script.sh 의 위치
@@ -18,7 +19,7 @@ func GenerateExecutor(path, fileName, userScriptPath string) (*os.File, *string,
 
 	// Ensure the directory exists.
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		if err := os.MkdirAll(path, 0755); err != nil {
+		if err := os.MkdirAll(path, 0o755); err != nil {
 			return nil, nil, fmt.Errorf("failed to create directory: %w", err)
 		}
 	}
@@ -86,18 +87,18 @@ fi
 
 exit "${EXIT_CODE}"`, ContainerResultLogPath, ContainerExitCodeLogPath, userScriptPath, userScriptPath, userScriptPath, userScriptPath, userScriptPath, userScriptPath)
 
-	if _, writeErr := tmpFile.Write([]byte(scriptContent)); writeErr != nil {
+	if _, writeErr := tmpFile.WriteString(scriptContent); writeErr != nil {
 		if closeErr := tmpFile.Close(); closeErr != nil {
 			Log.Errorf("failed to close temporary file after write error: %v", closeErr)
 		}
 		return nil, nil, fmt.Errorf("failed to write script content to temporary file: %w", writeErr)
 	}
 
-	if err := tmpFile.Sync(); err != nil {
+	if syncErr := tmpFile.Sync(); syncErr != nil {
 		if closeErr := tmpFile.Close(); closeErr != nil {
 			Log.Errorf("failed to close temporary file after sync error: %v", closeErr)
 		}
-		return nil, nil, fmt.Errorf("failed to sync temporary file: %w", err)
+		return nil, nil, fmt.Errorf("failed to sync temporary file: %w", syncErr)
 	}
 	if err := tmpFile.Close(); err != nil {
 		return nil, nil, fmt.Errorf("failed to close temporary file: %w", err)
@@ -125,7 +126,7 @@ exit "${EXIT_CODE}"`, ContainerResultLogPath, ContainerExitCodeLogPath, userScri
 	}
 
 	// Set execute permissions
-	if err = os.Chmod(executorPath, 0755); err != nil {
+	if err = os.Chmod(executorPath, 0o755); err != nil {
 		return nil, nil, fmt.Errorf("failed to set file permissions: %w", err)
 	}
 
@@ -207,7 +208,7 @@ func ProcessScript(scriptContent string, path string) (string, error) {
 	path, _ = utils.CheckPath(path)
 	// 디렉토리가 존재하지 않으면 생성
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		if err := os.MkdirAll(path, 0755); err != nil {
+		if err := os.MkdirAll(path, 0o755); err != nil {
 			return "", fmt.Errorf("failed to create directory: %w", err)
 		}
 	}
@@ -217,7 +218,7 @@ func ProcessScript(scriptContent string, path string) (string, error) {
 
 	// 받은 스크립트를 텍스트 파일로 저장 (보관용)
 	txtFilePath := filepath.Join(path, "user_script.txt")
-	if err := os.WriteFile(txtFilePath, []byte(scriptContent), 0644); err != nil {
+	if err := os.WriteFile(txtFilePath, []byte(scriptContent), 0o644); err != nil {
 		return "", fmt.Errorf("failed to write script content to txt file: %w", err)
 	}
 
@@ -257,7 +258,7 @@ func ProcessScript(scriptContent string, path string) (string, error) {
 		return "", fmt.Errorf("failed to move temp file to final location: %w", err)
 	}
 
-	if err = os.Chmod(shFilePath, 0755); err != nil {
+	if err = os.Chmod(shFilePath, 0o755); err != nil {
 		return "", fmt.Errorf("failed to set file permissions: %w", err)
 	}
 
