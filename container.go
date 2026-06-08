@@ -3,6 +3,7 @@ package podbridge5
 import (
 	"context"
 	"fmt"
+
 	"github.com/containers/podman/v5/libpod/define"
 	"github.com/containers/podman/v5/pkg/specgen"
 )
@@ -178,9 +179,4 @@ func HealthCheckContainer(ctx context.Context, containerID string) (status strin
 	}
 
 	return status, 0, nil
-}
-
-// handleExistingContainer 컨테이너가 존재했을 경우 해당 컨테이너의 정보를 리턴함.
-func handleExistingContainer(ctx context.Context, containerName string) (*CreateContainerResult, error) {
-	return handleExistingContainerWithRuntime(ctx, podmanContainerRuntime{}, containerName)
 }

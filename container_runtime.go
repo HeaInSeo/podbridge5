@@ -95,9 +95,9 @@ func startContainerWithRuntime(ctx context.Context, runtime containerRuntime, sp
 	if err := runtime.StartContainer(ctx, ccr.ID); err != nil {
 		cleanupCtx := context.Background()
 		if removeErr := runtime.RemoveContainer(cleanupCtx, ccr.ID); removeErr != nil {
-			return "", errors.Join(err, removeErr)
+			return "", errors.Join(fmt.Errorf("start container: %w", err), removeErr)
 		}
-		return "", err
+		return "", fmt.Errorf("start container: %w", err)
 	}
 
 	return ccr.ID, nil
@@ -117,12 +117,12 @@ func createContainerWithRuntime(ctx context.Context, runtime containerRuntime, c
 	containerExists, err := runtime.ContainerExists(ctx, conSpec.Name)
 	if err != nil {
 		Log.Errorf("Failed to check if container exists: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("check container exists: %w", err)
 	}
 	if containerExists {
 		info, inspectErr := runtime.InspectContainer(ctx, conSpec.Name)
 		if inspectErr != nil {
-			return nil, inspectErr
+			return nil, fmt.Errorf("inspect container: %w", inspectErr)
 		}
 		return nil, fmt.Errorf("%w: name=%s existing_id=%s existing_image=%s expected_image=%s", ErrContainerAlreadyExists, conSpec.Name, info.ID, info.Image, conSpec.Image)
 	}
