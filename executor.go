@@ -220,7 +220,7 @@ func ProcessScript(scriptContent, path string) (string, error) {
 	}
 
 	// 스크립트 내용의 앞뒤 공백 및 들여쓰기 제거
-	//scriptContent = ensureShebang(scriptContent)
+	// scriptContent = ensureShebang(scriptContent)
 
 	// 받은 스크립트를 텍스트 파일로 저장 (보관용)
 	txtFilePath := filepath.Join(path, "user_script.txt")
@@ -235,10 +235,8 @@ func ProcessScript(scriptContent, path string) (string, error) {
 	}
 
 	defer func() {
-		if err := os.Remove(tmpFile.Name()); err != nil && !os.IsNotExist(err) { // 문법 검사 실패 시 임시 파일 삭제
-			Log.Errorf("Failed to remove temporary file %s: %v", tmpFile.Name(), err)
-			// 리소스 해제시 발생하는 err 는 defer 외부 루틴의 err 와 분리하는게 바람직하다. 기억하기 위해서 지우지 않음.
-			// err = fmt.Errorf("failed to remove temporary file %s: %w", tmpFile.Name(), err)
+		if removeErr := os.Remove(tmpFile.Name()); removeErr != nil && !os.IsNotExist(removeErr) {
+			Log.Errorf("Failed to remove temporary file %s: %v", tmpFile.Name(), removeErr)
 		}
 	}()
 
@@ -268,7 +266,5 @@ func ProcessScript(scriptContent, path string) (string, error) {
 		return "", fmt.Errorf("failed to set file permissions: %w", err)
 	}
 
-	// 문법 검사가 성공했을 때 .sh 파일 경로 반환
-	// 마지막 err 의 경우 defer 에서 nil 이 아닐 경우 err 를 반환한다.
-	return shFilePath, err
+	return shFilePath, nil
 }
