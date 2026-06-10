@@ -21,6 +21,7 @@ concurrency:
 env:
   BUILD_TAGS: "exclude_graphdriver_btrfs containers_image_openpgp exclude_graphdriver_devicemapper"
   GO_VERSION_FILE: go.mod
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   # ────────────────────────────────────────────────────────────────
