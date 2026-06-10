@@ -21,7 +21,6 @@ concurrency:
 env:
   BUILD_TAGS: "exclude_graphdriver_btrfs containers_image_openpgp exclude_graphdriver_devicemapper"
   GO_VERSION_FILE: go.mod
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   # ────────────────────────────────────────────────────────────────
@@ -31,9 +30,9 @@ jobs:
     name: Lint (golangci-lint + gosec)
     runs-on: [self-hosted, linux, podbridge5]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: ${{ env.GO_VERSION_FILE }}
           cache: true
@@ -57,7 +56,7 @@ jobs:
       # install-mode: goinstall — 시스템 Go(1.25.5)로 소스 빌드.
       # 바이너리 릴리스는 go1.24로 빌드돼 go1.25.5 프로젝트를 처리 못함.
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
           version: latest
           install-mode: goinstall
@@ -72,9 +71,9 @@ jobs:
     name: Build
     runs-on: [self-hosted, linux, podbridge5]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: ${{ env.GO_VERSION_FILE }}
           cache: true
@@ -107,9 +106,9 @@ jobs:
     name: Unit Tests
     runs-on: [self-hosted, linux, podbridge5]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: ${{ env.GO_VERSION_FILE }}
           cache: true
@@ -140,7 +139,7 @@ jobs:
             ./...
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: coverage-${{ github.run_id }}
@@ -154,9 +153,9 @@ jobs:
     name: Vulnerability Scan (govulncheck)
     runs-on: [self-hosted, linux, podbridge5]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: ${{ env.GO_VERSION_FILE }}
           cache: true
