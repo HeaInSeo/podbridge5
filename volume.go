@@ -27,7 +27,7 @@ type VolumeMode int
 const (
 	// ModeSkip 기존 데이터가 있으면 아무 작업도 하지 않고 바로 리턴
 	ModeSkip VolumeMode = iota
-	// ModeUpdate 기존 데이터를 유지하되, tar 안의 파일로 “업데이트”(덮어쓰기)만 수행
+	// ModeUpdate 기존 데이터를 유지하되, tar 안의 파일로 "업데이트"(덮어쓰기)만 수행
 	ModeUpdate
 	// ModeOverwrite 기존 볼륨을 완전 초기화(삭제 → 새로 생성)한 뒤 tar 를 풀어 씀
 	ModeOverwrite
@@ -306,55 +306,55 @@ func WriteFolderToVolume(parentCtx context.Context, volumeName, mountPath, hostD
 			}
 			rel, relErr := filepath.Rel(hostDir, path)
 			if relErr != nil {
-				return fmt.Errorf(“relative path %q: %w”, path, relErr)
+				return fmt.Errorf("relative path %q: %w", path, relErr)
 			}
-			if rel == “.” {
+			if rel == "." {
 				return nil
 			}
 
 			fi, fiErr := d.Info()
 			if fiErr != nil {
-				return fmt.Errorf(“file info %q: %w”, path, fiErr)
+				return fmt.Errorf("file info %q: %w", path, fiErr)
 			}
 
 			var linkTarget string
 			// fi.Mode() 의 비트 패턴 중에서 os.ModeSymlink 플래그(심볼릭 링크를 나타내는 위치에 있는 비트)만 남겨내서(AND 연산 & 연산)
-			// 그 결과가 0이 아니면 “이 파일이 심볼릭 링크다” 라고 판단할 수 있다.
+			// 그 결과가 0이 아니면 "이 파일이 심볼릭 링크다" 라고 판단할 수 있다.
 			if fi.Mode()&os.ModeSymlink != 0 {
 				// 심볼릭 링크의 실제 패스를 가져옴.
 				if lt, lerr := os.Readlink(path); lerr == nil {
 					linkTarget = lt
 				} else {
-					return fmt.Errorf(“readlink %q: %w”, path, lerr)
+					return fmt.Errorf("readlink %q: %w", path, lerr)
 				}
 			}
 
 			hdr, hdrErr := tar.FileInfoHeader(fi, linkTarget)
 			if hdrErr != nil {
-				return fmt.Errorf(“tar header %q: %w”, path, hdrErr)
+				return fmt.Errorf("tar header %q: %w", path, hdrErr)
 			}
 			hdr.Name = rel
 
 			if d.IsDir() {
 				if err := tw.WriteHeader(hdr); err != nil {
-					return fmt.Errorf(“write dir header %q: %w”, rel, err)
+					return fmt.Errorf("write dir header %q: %w", rel, err)
 				}
 				return nil
 			}
 
 			if err := tw.WriteHeader(hdr); err != nil {
-				return fmt.Errorf(“write header %q: %w”, rel, err)
+				return fmt.Errorf("write header %q: %w", rel, err)
 			}
 
 			if fi.Mode().IsRegular() {
 				f, openErr := os.Open(path)
 				if openErr != nil {
-					return fmt.Errorf(“open file %q: %w”, path, openErr)
+					return fmt.Errorf("open file %q: %w", path, openErr)
 				}
 				_, cErr := io.Copy(tw, f)
 				_ = f.Close()
 				if cErr != nil {
-					return fmt.Errorf(“copy file %q: %w”, path, cErr)
+					return fmt.Errorf("copy file %q: %w", path, cErr)
 				}
 			}
 			return nil
