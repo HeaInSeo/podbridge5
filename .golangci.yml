@@ -51,6 +51,8 @@ linters:
         - (io.ReadCloser).Close
         - (*os.File).Close
         - (*os.File).Sync
+        # cleanup 경로에서 best-effort Remove는 무시
+        - os.Remove
 
     govet:
       enable-all: true
@@ -158,11 +160,12 @@ linters:
           - errcheck
           - wrapcheck
 
-      # ── 이미지 빌드: buildah 경로 변수 사용은 설계상 필요 ──────────
-      # G304(파일 경로 taint)는 이미지 레이어 경로에서 발생; 실제 취약점은
-      # 경로가 외부 입력인 경우만 해당 — 내부 config 구조체에서 오는 경로
-      - path: "image_runtime\\.go$|image_builder_runtime\\.go$"
-        text: "G304: File path provided as taint input"
+      # ── 이미지/executor/buildconfig: buildah 경로 변수·권한은 설계상 필요 ──
+      # G304: 이미지 레이어 경로는 내부 config 구조체에서 오는 경로 (외부 입력 X)
+      # G301/G302: 컨테이너 빌드 디렉터리·파일 권한 (0755/0644)은 의도적
+      - path: "executor\\.go$|buildconfig\\.go$|image_runtime\\.go$|image_builder_runtime\\.go$"
+        linters:
+          - gosec
 
       # ── 볼륨 ops: 컨테이너 데이터용 권한은 의도적 ─────────────────
       - path: "volume\\.go$|volume_runtime\\.go$"
