@@ -16,7 +16,6 @@ func TestGenerateExecutor(t *testing.T) {
 	if err := os.MkdirAll(testPath, 0o755); err != nil {
 		t.Fatalf("failed to create test directory: %v", err)
 	}
-	// defer os.RemoveAll(testPath) // 테스트 후 디렉토리 삭제
 
 	// generateExecutor 실행
 	_, executorPath, err := GenerateExecutor(testPath, fileName, cmd)
@@ -43,7 +42,6 @@ echo "Hello, World!"`
 	if err := os.MkdirAll(testPath, 0o755); err != nil {
 		t.Fatalf("failed to create test directory: %v", err)
 	}
-	// defer os.RemoveAll(testPath) // 테스트 후 디렉토리 삭제
 
 	// processScript 실행
 	scriptPath, err := ProcessScript(scriptContent, testPath)
@@ -104,8 +102,8 @@ func TestCompareFiles(t *testing.T) {
 
 	// file2에 다른 내용 작성
 	content2 := []byte("Different content")
-	if err := os.WriteFile(file2, content2, 0o644); err != nil {
-		t.Fatalf("failed to write to file2: %v", err)
+	if writeErr := os.WriteFile(file2, content2, 0o644); writeErr != nil {
+		t.Fatalf("failed to write to file2: %v", writeErr)
 	}
 
 	// 파일 비교 테스트 (다른 파일)
