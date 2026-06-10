@@ -100,21 +100,23 @@ exit "${EXIT_CODE}"`, ContainerResultLogPath, ContainerExitCodeLogPath, userScri
 		}
 		return nil, nil, fmt.Errorf("failed to sync temporary file: %w", syncErr)
 	}
-	if err := tmpFile.Close(); err != nil {
-		return nil, nil, fmt.Errorf("failed to close temporary file: %w", err)
+	if closeErr := tmpFile.Close(); closeErr != nil {
+		return nil, nil, fmt.Errorf("failed to close temporary file: %w", closeErr)
 	}
 
 	// Compare with existing file if present
-	if exists, _, err := utils.FileExists(executorPath); err != nil {
-		return nil, nil, fmt.Errorf("failed to check if original file exists: %w", err)
-	} else if exists {
-		same, err := compareFiles(executorPath, tmpFilePath)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to compare files: %w", err)
+	exists, _, existsErr := utils.FileExists(executorPath)
+	if existsErr != nil {
+		return nil, nil, fmt.Errorf("failed to check if original file exists: %w", existsErr)
+	}
+	if exists {
+		same, compareErr := compareFiles(executorPath, tmpFilePath)
+		if compareErr != nil {
+			return nil, nil, fmt.Errorf("failed to compare files: %w", compareErr)
 		}
 		if same {
-			if err := os.Remove(tmpFilePath); err != nil {
-				Log.Errorf("failed to remove temporary file %s: %v", tmpFilePath, err)
+			if removeErr := os.Remove(tmpFilePath); removeErr != nil {
+				Log.Errorf("failed to remove temporary file %s: %v", tmpFilePath, removeErr)
 			}
 			return nil, &executorPath, nil
 		}
@@ -143,7 +145,7 @@ exit "${EXIT_CODE}"`, ContainerResultLogPath, ContainerExitCodeLogPath, userScri
 func compareFiles(file1, file2 string) (bool, error) {
 	f1, err := os.Open(file1)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("open %q: %w", file1, err)
 	}
 	defer func() {
 		if closeErr := f1.Close(); closeErr != nil {
@@ -153,7 +155,7 @@ func compareFiles(file1, file2 string) (bool, error) {
 
 	f2, err := os.Open(file2)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("open %q: %w", file2, err)
 	}
 	defer func() {
 		if closeErr := f2.Close(); closeErr != nil {
@@ -163,12 +165,12 @@ func compareFiles(file1, file2 string) (bool, error) {
 
 	f1Stat, err := f1.Stat()
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("stat %q: %w", file1, err)
 	}
 
 	f2Stat, err := f2.Stat()
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("stat %q: %w", file2, err)
 	}
 
 	// 파일 크기가 다르면 내용이 다르다고 간주
@@ -185,10 +187,10 @@ func compareFiles(file1, file2 string) (bool, error) {
 		n2, err2 := f2.Read(buf2)
 
 		if err1 != nil && err1 != io.EOF {
-			return false, err1
+			return false, fmt.Errorf("read %q: %w", file1, err1)
 		}
 		if err2 != nil && err2 != io.EOF {
-			return false, err2
+			return false, fmt.Errorf("read %q: %w", file2, err2)
 		}
 
 		if n1 != n2 || !bytes.Equal(buf1[:n1], buf2[:n1]) {
@@ -204,8 +206,12 @@ func compareFiles(file1, file2 string) (bool, error) {
 }
 
 // ProcessScript use_script.sh 만들어 주는 메서드
-func ProcessScript(scriptContent string, path string) (string, error) {
-	path, _ = utils.CheckPath(path)
+func ProcessScript(scriptContent, path string) (string, error) {
+	checkedPath, checkErr := utils.CheckPath(path)
+	if checkErr != nil {
+		return "", fmt.Errorf("invalid path: %w", checkErr)
+	}
+	path = checkedPath
 	// 디렉토리가 존재하지 않으면 생성
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		if err := os.MkdirAll(path, 0o755); err != nil {
