@@ -16,8 +16,8 @@ func CreateInitContainer(ctx context.Context, podID, lowerdir, upperdir, workdir
 	if err != nil {
 		return "", err
 	}
-	if err := validateOverlayPathArg("target", target); err != nil {
-		return "", err
+	if validateErr := validateOverlayPathArg("target", target); validateErr != nil {
+		return "", validateErr
 	}
 
 	spec, err := NewSpec(

@@ -5,12 +5,13 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
-	"github.com/containers/podman/v5/pkg/bindings/containers"
-	"github.com/containers/podman/v5/pkg/specgen"
-	"github.com/opencontainers/runtime-spec/specs-go"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/containers/podman/v5/pkg/bindings/containers"
+	"github.com/containers/podman/v5/pkg/specgen"
+	specs "github.com/opencontainers/runtime-spec/specs-go"
 )
 
 // LogContainerStatsToCSV 지정한 컨테이너의 리소스 사용량(CPU, Memory 등)을 일정 간격으로 CSV 파일에 기록

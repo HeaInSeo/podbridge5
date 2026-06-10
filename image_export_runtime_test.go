@@ -106,9 +106,13 @@ func TestSaveImageWithRuntime(t *testing.T) {
 }
 
 func TestSaveImageWithRuntimePropagatesExportError(t *testing.T) {
-	runtime := &fakeImageExportRuntime{err: errors.New("export failed")}
+	exportErr := errors.New("export failed")
+	runtime := &fakeImageExportRuntime{err: exportErr}
 	err := saveImageWithRuntime(context.Background(), runtime, t.TempDir(), "docker.io/library/alpine:latest", "img-1", false)
-	if err == nil || err.Error() != "export failed" {
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !errors.Is(err, exportErr) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }

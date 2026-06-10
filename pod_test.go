@@ -3,10 +3,11 @@ package podbridge5
 import (
 	"context"
 	"errors"
-	"github.com/containers/podman/v5/pkg/domain/entities"
-	"github.com/containers/podman/v5/pkg/specgen"
 	"strings"
 	"testing"
+
+	"github.com/containers/podman/v5/pkg/domain/entities"
+	"github.com/containers/podman/v5/pkg/specgen"
 )
 
 func TestNewPodSpec_NoOptions(t *testing.T) {

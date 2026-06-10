@@ -23,7 +23,7 @@ type fakeImageBuildRuntime struct {
 	pushSecureTLS   bool
 }
 
-func (f *fakeImageBuildRuntime) BuildDockerfiles(_ context.Context, _ storage.Store, options define.BuildOptions, dockerfilePath string) (string, string, error) {
+func (f *fakeImageBuildRuntime) BuildDockerfiles(_ context.Context, _ storage.Store, options define.BuildOptions, dockerfilePath string) (buildID, buildRef string, buildErr error) {
 	f.buildDockerfile = dockerfilePath
 	f.buildOutput = options.Output
 	return f.buildID, f.buildDigest, f.buildErr

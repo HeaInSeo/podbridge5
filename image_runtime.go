@@ -50,7 +50,7 @@ func (realImageBuildRuntime) PushImage(ctx context.Context, store storage.Store,
 	return manifestDigest.String(), nil
 }
 
-func writeDockerfileTempFile(dockerfileContent string) (string, func(), error) {
+func writeDockerfileTempFile(dockerfileContent string) (filePath string, cleanupFn func(), buildErr error) {
 	tmpFile, err := os.CreateTemp("", "nodeforge-dockerfile-*")
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to create temp Dockerfile: %w", err)
