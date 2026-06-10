@@ -92,34 +92,34 @@ func newVolumeReaderSpec(volumeName, mountPath string) (*specgen.SpecGenerator, 
 	)
 }
 
-func startVolumeContainer(ctx context.Context, runtime volumeContainerRuntime, spec *specgen.SpecGenerator) (string, func(), error) {
+func startVolumeContainer(ctx context.Context, runtime volumeContainerRuntime, spec *specgen.SpecGenerator) (containerID string, cleanupFn func(), startErr error) {
 	if err := runtime.EnsureImage(ctx, spec.Image); err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("ensure image %q: %w", spec.Image, err)
 	}
 
-	containerID, err := runtime.CreateContainer(ctx, spec)
+	cID, err := runtime.CreateContainer(ctx, spec)
 	if err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("create container: %w", err)
 	}
 
 	cleanup := func() {
 		cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		if stopErr := runtime.StopContainer(cleanupCtx, containerID); stopErr != nil {
-			Log.Warnf("stop container %s: %v", containerID, stopErr)
+		if stopErr := runtime.StopContainer(cleanupCtx, cID); stopErr != nil {
+			Log.Warnf("stop container %s: %v", cID, stopErr)
 		}
-		if rmErr := runtime.RemoveContainer(cleanupCtx, containerID); rmErr != nil {
-			Log.Warnf("remove container %s: %v", containerID, rmErr)
+		if rmErr := runtime.RemoveContainer(cleanupCtx, cID); rmErr != nil {
+			Log.Warnf("remove container %s: %v", cID, rmErr)
 		}
 	}
 
-	if err := runtime.StartContainer(ctx, containerID); err != nil {
+	if err := runtime.StartContainer(ctx, cID); err != nil {
 		cleanup()
-		return "", nil, err
+		return "", nil, fmt.Errorf("start container %q: %w", cID, err)
 	}
 
-	return containerID, cleanup, nil
+	return cID, cleanup, nil
 }
 
 func uniqueTempContainerName(prefix string) string {

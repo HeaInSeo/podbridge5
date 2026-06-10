@@ -77,6 +77,8 @@ linters-settings:
       - G306
       # G115: syscall/커널 인터페이스 코드의 정수 타입 변환
       - G115
+      # G110: tar/io.Copy on trusted internal container archives (not user-supplied)
+      - G110
     config:
       G101:
         # 컨테이너 이미지 다이제스트·UUID를 자격증명으로 오탐하지 않도록 엔트로피 임계치 조정

@@ -6,10 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/containers/podman/v5/pkg/bindings/containers"
-	"github.com/containers/podman/v5/pkg/bindings/volumes"
-	"github.com/containers/podman/v5/pkg/domain/entities/types"
-	"github.com/containers/podman/v5/pkg/specgen"
 	"io"
 	"io/fs"
 	"os"
@@ -17,6 +13,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/containers/podman/v5/pkg/bindings/containers"
+	"github.com/containers/podman/v5/pkg/bindings/volumes"
+	"github.com/containers/podman/v5/pkg/domain/entities/types"
+	"github.com/containers/podman/v5/pkg/specgen"
 )
 
 // TODO RemoveVolume 테스트 진행해야 함. 코드 정리 필요.
@@ -143,11 +144,11 @@ func RemoveVolume(ctx context.Context, name string, beh *RemoveBehavior) error {
 		}
 		if beh.RetryForce && !beh.Force {
 			// force 재시도
-			if ferr := tryRemove(true); ferr == nil {
+			ferr := tryRemove(true)
+			if ferr == nil {
 				return nil
-			} else {
-				return ferr
 			}
+			return ferr
 		}
 		return err
 	})
@@ -166,13 +167,13 @@ func OverwriteVolume(ctx context.Context, name string, create CreateFn) (*types.
 		return nil, fmt.Errorf("check exists: %w", err)
 	}
 	if exists {
-		if err := RemoveVolume(ctx, name, &RemoveBehavior{
+		if removeErr := RemoveVolume(ctx, name, &RemoveBehavior{
 			Force:          false,
 			RetryForce:     true,
 			IgnoreNotFound: true,
 			Attempts:       3,
-		}); err != nil {
-			return nil, fmt.Errorf("remove before overwrite: %w", err)
+		}); removeErr != nil {
+			return nil, fmt.Errorf("remove before overwrite: %w", removeErr)
 		}
 	}
 	vcr, err := create(ctx, name)
@@ -303,17 +304,17 @@ func WriteFolderToVolume(parentCtx context.Context, volumeName, mountPath, hostD
 			if err != nil {
 				return err
 			}
-			rel, err := filepath.Rel(hostDir, path)
-			if err != nil {
-				return err
+			rel, relErr := filepath.Rel(hostDir, path)
+			if relErr != nil {
+				return fmt.Errorf(“relative path %q: %w”, path, relErr)
 			}
-			if rel == "." {
+			if rel == “.” {
 				return nil
 			}
 
-			fi, err := d.Info()
-			if err != nil {
-				return err
+			fi, fiErr := d.Info()
+			if fiErr != nil {
+				return fmt.Errorf(“file info %q: %w”, path, fiErr)
 			}
 
 			var linkTarget string
@@ -324,36 +325,36 @@ func WriteFolderToVolume(parentCtx context.Context, volumeName, mountPath, hostD
 				if lt, lerr := os.Readlink(path); lerr == nil {
 					linkTarget = lt
 				} else {
-					return lerr
+					return fmt.Errorf(“readlink %q: %w”, path, lerr)
 				}
 			}
 
-			hdr, err := tar.FileInfoHeader(fi, linkTarget)
-			if err != nil {
-				return err
+			hdr, hdrErr := tar.FileInfoHeader(fi, linkTarget)
+			if hdrErr != nil {
+				return fmt.Errorf(“tar header %q: %w”, path, hdrErr)
 			}
 			hdr.Name = rel
 
 			if d.IsDir() {
 				if err := tw.WriteHeader(hdr); err != nil {
-					return err
+					return fmt.Errorf(“write dir header %q: %w”, rel, err)
 				}
 				return nil
 			}
 
 			if err := tw.WriteHeader(hdr); err != nil {
-				return err
+				return fmt.Errorf(“write header %q: %w”, rel, err)
 			}
 
 			if fi.Mode().IsRegular() {
-				f, err := os.Open(path)
-				if err != nil {
-					return err
+				f, openErr := os.Open(path)
+				if openErr != nil {
+					return fmt.Errorf(“open file %q: %w”, path, openErr)
 				}
 				_, cErr := io.Copy(tw, f)
 				_ = f.Close()
 				if cErr != nil {
-					return cErr
+					return fmt.Errorf(“copy file %q: %w”, path, cErr)
 				}
 			}
 			return nil
@@ -457,7 +458,7 @@ func withRetry(ctx context.Context, attempts int, baseDelay time.Duration, fn fu
 	var err error
 	for i := 0; i < attempts; i++ {
 		if ctx.Err() != nil {
-			return ctx.Err()
+			return fmt.Errorf("retry: %w", ctx.Err())
 		}
 		err = fn()
 		if err == nil {
@@ -469,7 +470,7 @@ func withRetry(ctx context.Context, attempts int, baseDelay time.Duration, fn fu
 		select {
 		case <-time.After(delay):
 		case <-ctx.Done():
-			return ctx.Err()
+			return fmt.Errorf("retry: %w", ctx.Err())
 		}
 		if delay < 2*time.Second {
 			delay *= 2

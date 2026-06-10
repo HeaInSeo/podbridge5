@@ -73,7 +73,7 @@ func TestHealthcheckDurationHelpers(t *testing.T) {
 		t.Fatalf("unexpected timeout: %s", timeout)
 	}
 
-	if _, err := parseHealthcheckTimeout("500ms"); err == nil {
+	if _, terr := parseHealthcheckTimeout("500ms"); terr == nil {
 		t.Fatal("expected timeout validation error")
 	}
 
