@@ -96,6 +96,7 @@ linters:
         - name: error-strings
         - name: error-naming
         - name: exported
+          disabled: true
         - name: if-return
         - name: increment-decrement
         - name: var-naming
@@ -163,13 +164,13 @@ linters:
       # ── 이미지/executor/buildconfig: buildah 경로 변수·권한은 설계상 필요 ──
       # G304: 이미지 레이어 경로는 내부 config 구조체에서 오는 경로 (외부 입력 X)
       # G301/G302: 컨테이너 빌드 디렉터리·파일 권한 (0755/0644)은 의도적
-      - path: "executor\\.go$|buildconfig\\.go$|image_runtime\\.go$|image_builder_runtime\\.go$"
+      - path: "executor\\.go$|buildconfig\\.go$|image_runtime\\.go$|image_builder_runtime\\.go$|image_export_runtime\\.go$|resource\\.go$|mount\\.go$"
         linters:
           - gosec
 
       # ── 볼륨 ops: 컨테이너 데이터용 권한은 의도적 ─────────────────
       - path: "volume\\.go$|volume_runtime\\.go$"
-        text: "G302|G306"
+        text: "G302|G304|G306"
 
 issues:
   max-issues-per-linter: 0

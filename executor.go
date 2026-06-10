@@ -2,6 +2,7 @@ package podbridge5
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -251,7 +252,7 @@ func ProcessScript(scriptContent, path string) (string, error) {
 	}
 
 	// 문법 검사 수행
-	if err = exec.Command("bash", "-n", tmpFile.Name()).Run(); err != nil {
+	if err = exec.CommandContext(context.Background(), "bash", "-n", tmpFile.Name()).Run(); err != nil {
 		// 문법 오류가 있으면 .sh 파일을 남기지 않고 에러 반환
 		return "", fmt.Errorf("syntax error in user script: %w", err)
 	}
