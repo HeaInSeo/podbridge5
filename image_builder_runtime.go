@@ -41,7 +41,7 @@ func newBuilderWithRuntime(ctx context.Context, runtime imageBuilderFactoryRunti
 
 	builder, err := runtime.NewBuilder(ctx, store, *builderOpts)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new builder: %w", err)
 	}
 	return builder, nil
 }

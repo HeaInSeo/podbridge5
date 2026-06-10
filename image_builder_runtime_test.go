@@ -46,8 +46,8 @@ func (f *fakeImageBuilderFactoryRuntime) Capabilities() ([]string, error) {
 }
 
 func (f *fakeImageBuilderFactoryRuntime) NewBuilder(_ context.Context, _ storage.Store, options buildah.BuilderOptions) (*buildah.Builder, error) {
-	copy := options
-	f.options = &copy
+	optsCopy := options
+	f.options = &optsCopy
 	return f.newBuilder, f.newErr
 }
 

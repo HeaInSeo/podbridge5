@@ -27,8 +27,9 @@ func (f *fakeImageExportRuntime) ExportImage(_ context.Context, imageID string, 
 }
 
 func TestImageArchivePath(t *testing.T) {
-	got := imageArchivePath("/tmp/out", "docker.io/library/alpine:latest", false)
-	want := filepath.Join("/tmp/out", "alpine-latest.tar")
+	testDir := filepath.Join(os.TempDir(), "out")
+	got := imageArchivePath(testDir, "docker.io/library/alpine:latest", false)
+	want := filepath.Join(testDir, "alpine-latest.tar")
 	if got != want {
 		t.Fatalf("imageArchivePath() = %q, want %q", got, want)
 	}
@@ -40,11 +41,11 @@ func TestPrepareImageArchiveWriter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("prepareImageArchiveWriter() error = %v", err)
 	}
-	if _, err := writer.Write([]byte("demo")); err != nil {
-		t.Fatalf("writer.Write() error = %v", err)
+	if _, writeErr := writer.Write([]byte("demo")); writeErr != nil {
+		t.Fatalf("writer.Write() error = %v", writeErr)
 	}
-	if err := closer.Close(); err != nil {
-		t.Fatalf("closer.Close() error = %v", err)
+	if closeErr := closer.Close(); closeErr != nil {
+		t.Fatalf("closer.Close() error = %v", closeErr)
 	}
 	data, err := os.ReadFile(archivePath)
 	if err != nil {
@@ -61,11 +62,11 @@ func TestPrepareImageArchiveWriterCompressed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("prepareImageArchiveWriter() error = %v", err)
 	}
-	if _, err := writer.Write([]byte("demo")); err != nil {
-		t.Fatalf("writer.Write() error = %v", err)
+	if _, writeErr := writer.Write([]byte("demo")); writeErr != nil {
+		t.Fatalf("writer.Write() error = %v", writeErr)
 	}
-	if err := closer.Close(); err != nil {
-		t.Fatalf("closer.Close() error = %v", err)
+	if closeErr := closer.Close(); closeErr != nil {
+		t.Fatalf("closer.Close() error = %v", closeErr)
 	}
 	data, err := os.ReadFile(archivePath)
 	if err != nil {

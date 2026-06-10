@@ -21,7 +21,7 @@ type imageBuildRuntime interface {
 
 type realImageBuildRuntime struct{}
 
-func (realImageBuildRuntime) BuildDockerfiles(ctx context.Context, store storage.Store, options define.BuildOptions, dockerfilePath string) (string, string, error) {
+func (realImageBuildRuntime) BuildDockerfiles(ctx context.Context, store storage.Store, options define.BuildOptions, dockerfilePath string) (buildID, buildRef string, buildErr error) {
 	id, ref, err := imagebuildah.BuildDockerfiles(ctx, store, options, dockerfilePath)
 	if err != nil {
 		return "", "", err
