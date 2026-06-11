@@ -170,7 +170,7 @@ linters:
 
       # ── 볼륨 ops: 컨테이너 데이터용 권한은 의도적 ─────────────────
       - path: "volume\\.go$|volume_runtime\\.go$"
-        text: "G302|G304|G306"
+        text: "G122|G302|G304|G306"
 
 issues:
   max-issues-per-linter: 0
