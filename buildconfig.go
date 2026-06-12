@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/HeaInSeo/utils"
 	"github.com/containers/buildah"
 	"github.com/containers/storage"
-	"github.com/seoyhaein/utils"
 )
 
 // BuildConfig holds basic configuration for building an image,

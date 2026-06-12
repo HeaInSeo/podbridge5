@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/HeaInSeo/utils"
 	"github.com/containers/buildah"
 	"github.com/containers/buildah/define"
 	"github.com/containers/common/pkg/config"
@@ -15,7 +16,6 @@ import (
 	"github.com/containers/storage"
 	"github.com/containers/storage/pkg/unshare"
 	"github.com/opencontainers/go-digest"
-	"github.com/seoyhaein/utils"
 )
 
 var (

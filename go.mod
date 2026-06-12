@@ -3,6 +3,7 @@ module github.com/HeaInSeo/podbridge5
 go 1.25.5
 
 require (
+	github.com/HeaInSeo/utils v0.0.7
 	github.com/containers/buildah v1.37.1
 	github.com/containers/common v0.60.1
 	github.com/containers/image/v5 v5.32.1
@@ -11,7 +12,6 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/runtime-spec v1.2.0
-	github.com/seoyhaein/utils v0.0.6
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/sys v0.45.0
 )
