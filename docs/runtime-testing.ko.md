@@ -94,6 +94,7 @@ VM을 삭제해도 이 스크립트로 동일한 환경을 재현할 수 있다.
 1. 원격 장비에서 테스트용 VM 생성
 2. 필요한 패키지와 system `podman` socket 준비
    이 단계에서 VM 내부 Go toolchain도 `1.25.6`으로 맞춥니다.
+   rootless `unshare` integration 경로를 위해 `ubuntu` 사용자의 `/etc/subuid`, `/etc/subgid`도 설정하고, Ubuntu 24.04의 AppArmor unprivileged user namespace 제한을 테스트 VM 안에서 해제합니다.
 3. 현재 로컬 `podbridge5` 워크트리를 tar.gz로 묶어 원격 호스트로 업로드
 4. 원격 호스트에서 `multipass transfer`로 fresh VM에 동기화
 5. VM 안에서 `go test ./...` 실행

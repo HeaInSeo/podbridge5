@@ -76,6 +76,7 @@ The Makefile handles the remote runtime VM lifecycle automatically.
 1. creates a fresh test VM on the remote machine
 2. installs required packages and prepares the system `podman` socket
    This step also aligns the VM Go toolchain to `1.25.6`.
+   It also configures `/etc/subuid` and `/etc/subgid` for the `ubuntu` user and disables Ubuntu 24.04's AppArmor unprivileged user namespace restriction inside the test VM so the rootless `unshare` integration path can run.
 3. archives the current local `podbridge5` worktree and uploads it to the remote host
 4. syncs that archive into the fresh VM with `multipass transfer`
 5. runs `go test ./...` inside the VM

@@ -80,6 +80,9 @@ func main() {
 			fmt.Sprintf("if [ \"$(current_go_version)\" != %q ]; then curl -fsSL %q -o /tmp/podbridge5-go.tar.gz && sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf /tmp/podbridge5-go.tar.gz && rm -f /tmp/podbridge5-go.tar.gz; fi", "go"+goVersion, fmt.Sprintf("https://go.dev/dl/go%s.linux-amd64.tar.gz", goVersion)),
 			"export PATH=/usr/local/go/bin:$PATH",
 			fmt.Sprintf("[ \"$(current_go_version)\" = %q ]", "go"+goVersion),
+			"if ! grep -q \"^ubuntu:\" /etc/subuid; then echo \"ubuntu:100000:65536\" | sudo tee -a /etc/subuid >/dev/null; fi",
+			"if ! grep -q \"^ubuntu:\" /etc/subgid; then echo \"ubuntu:100000:65536\" | sudo tee -a /etc/subgid >/dev/null; fi",
+			"if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 >/dev/null; fi",
 			fmt.Sprintf("mkdir -p %q", dirOf(vmRepo)),
 			"sudo systemctl enable --now podman.socket",
 			"sudo test -S /run/podman/podman.sock",
@@ -103,7 +106,8 @@ func main() {
 	case "run-integration":
 		runCmd := strings.Join([]string{
 			"set -euo pipefail",
-			fmt.Sprintf("sudo env -C %q PATH=/usr/local/go/bin:$PATH CGO_ENABLED=1 XDG_RUNTIME_DIR=/run CONTAINER_HOST=unix:///run/podman/podman.sock unshare -r -m go test -v -tags=integration ./...", vmRepo),
+			fmt.Sprintf("cd %q", vmRepo),
+			"env PATH=/usr/local/go/bin:$PATH CGO_ENABLED=1 XDG_RUNTIME_DIR=/run/user/1000 CONTAINER_HOST=unix:///run/podman/podman.sock unshare -r -m go test -v -tags=integration ./...",
 		}, "; ")
 		fmt.Println(mustExec(c, vmName, runCmd))
 	case "delete":
