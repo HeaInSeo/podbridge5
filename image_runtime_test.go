@@ -69,6 +69,26 @@ func TestBuildDockerfileContentWithRuntime(t *testing.T) {
 	}
 }
 
+func TestBuildDockerfileContentWithOptionsRuntime(t *testing.T) {
+	runtime := &fakeImageBuildRuntime{buildID: "img-1", buildDigest: "sha256:abc"}
+	buildOpts := DefaultImageBuildOptions("example.com/demo:latest")
+	buildOpts.ContextDirectory = "/workspace"
+	buildOpts.Isolation = define.IsolationChroot
+	buildOpts.Runtime = "crun"
+	buildOpts.Layers = true
+
+	imageID, digestStr, err := buildDockerfileContentWithOptionsRuntime(context.Background(), runtime, nil, "FROM scratch\n", buildOpts)
+	if err != nil {
+		t.Fatalf("buildDockerfileContentWithOptionsRuntime() error = %v", err)
+	}
+	if imageID != "img-1" || digestStr != "sha256:abc" {
+		t.Fatalf("unexpected build result: %q %q", imageID, digestStr)
+	}
+	if runtime.buildOutput != "example.com/demo:latest" {
+		t.Fatalf("build output = %q", runtime.buildOutput)
+	}
+}
+
 func TestPushImageWithRuntime(t *testing.T) {
 	runtime := &fakeImageBuildRuntime{pushDigest: "sha256:def"}
 	digestStr, err := pushImageWithRuntime(context.Background(), runtime, nil, "example.com/demo:latest", "example.com/demo:latest")

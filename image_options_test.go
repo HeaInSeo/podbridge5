@@ -31,6 +31,112 @@ func TestDefaultImageBuildOptions(t *testing.T) {
 	}
 }
 
+func TestDefaultUserNamespaceStoreOptions(t *testing.T) {
+	got := DefaultUserNamespaceStoreOptions()
+	if got.RunRoot != DefaultUserNamespaceRunRoot {
+		t.Fatalf("unexpected runroot: %q", got.RunRoot)
+	}
+	if got.GraphRoot != DefaultUserNamespaceGraphRoot {
+		t.Fatalf("unexpected graphroot: %q", got.GraphRoot)
+	}
+	if got.GraphDriverName != "overlay" {
+		t.Fatalf("unexpected graph driver: %q", got.GraphDriverName)
+	}
+	if got.PullOptions["enable_partial_images"] != "true" {
+		t.Fatalf("expected partial image pulls to be enabled")
+	}
+}
+
+func TestStoreOptions(t *testing.T) {
+	opts := DefaultUserNamespaceStoreOptions()
+	for _, applyOpt := range []StoreOption{
+		WithStoreRoots("/run/custom", "/graph/custom"),
+		WithStoreDriver("vfs"),
+		WithFuseOverlayfsMountProgram("/custom/fuse-overlayfs"),
+		WithPartialImagePulls(false),
+	} {
+		if err := applyOpt(&opts); err != nil {
+			t.Fatalf("unexpected option error: %v", err)
+		}
+	}
+	if opts.RunRoot != "/run/custom" || opts.GraphRoot != "/graph/custom" {
+		t.Fatalf("unexpected roots: %q %q", opts.RunRoot, opts.GraphRoot)
+	}
+	if opts.GraphDriverName != "vfs" {
+		t.Fatalf("unexpected driver: %q", opts.GraphDriverName)
+	}
+	if !reflect.DeepEqual(opts.GraphDriverOptions, []string{"overlay.mount_program=/custom/fuse-overlayfs"}) {
+		t.Fatalf("unexpected graph driver options: %v", opts.GraphDriverOptions)
+	}
+	if _, ok := opts.PullOptions["enable_partial_images"]; ok {
+		t.Fatal("partial image pulls should be disabled")
+	}
+}
+
+func TestUserNamespaceImageBuildOptions(t *testing.T) {
+	got, err := UserNamespaceImageBuildOptions(UserNamespaceBuildConfig{
+		OutputRef:        "registry.example.com/team/tool:latest",
+		ContextDirectory: "/workspace",
+		CacheRef:         "registry.example.com/team/tool-cache:latest",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.ContextDirectory != "/workspace" {
+		t.Fatalf("unexpected context directory: %q", got.ContextDirectory)
+	}
+	if got.Isolation != define.IsolationChroot {
+		t.Fatalf("unexpected isolation: %v", got.Isolation)
+	}
+	if got.Runtime != DefaultUserNamespaceRuntime {
+		t.Fatalf("unexpected runtime: %q", got.Runtime)
+	}
+	if !got.Layers {
+		t.Fatal("expected layers to be enabled")
+	}
+	if len(got.CacheFrom) != 1 || len(got.CacheTo) != 1 {
+		t.Fatalf("expected cache refs, got from=%d to=%d", len(got.CacheFrom), len(got.CacheTo))
+	}
+	if got.CacheFrom[0].String() != "registry.example.com/team/tool-cache:latest" {
+		t.Fatalf("unexpected cache ref: %q", got.CacheFrom[0].String())
+	}
+}
+
+func TestDefaultUserNamespaceBuildEnvironment(t *testing.T) {
+	got := DefaultUserNamespaceBuildEnvironment()
+	if got[ContainersUserNamespaceConfiguredEnv] != "done" {
+		t.Fatalf("expected user namespace configured marker")
+	}
+	if got[ContainersRootlessUIDEnv] != "1000" || got[ContainersRootlessGIDEnv] != "1000" {
+		t.Fatalf("unexpected rootless id env: uid=%q gid=%q", got[ContainersRootlessUIDEnv], got[ContainersRootlessGIDEnv])
+	}
+	if got[BuildahIsolationEnv] != "chroot" {
+		t.Fatalf("unexpected isolation env: %q", got[BuildahIsolationEnv])
+	}
+	if got[BuildahRuntimeEnv] != DefaultUserNamespaceRuntime {
+		t.Fatalf("unexpected runtime env: %q", got[BuildahRuntimeEnv])
+	}
+	if got[HomeEnv] != DefaultUserNamespaceHome {
+		t.Fatalf("unexpected home env: %q", got[HomeEnv])
+	}
+	if got[XDGConfigHomeEnv] != DefaultUserNamespaceHome+"/.config" {
+		t.Fatalf("unexpected config home env: %q", got[XDGConfigHomeEnv])
+	}
+}
+
+func TestDefaultUserNamespaceBuildCapabilities(t *testing.T) {
+	got := DefaultUserNamespaceBuildCapabilities()
+	want := []string{"CHOWN", "DAC_OVERRIDE", "FOWNER", "SETFCAP", "SYS_CHROOT"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected capabilities: got %v want %v", got, want)
+	}
+
+	got[0] = "CHANGED"
+	if DefaultUserNamespaceBuildCapabilities()[0] != "CHOWN" {
+		t.Fatal("capabilities should return a fresh slice")
+	}
+}
+
 func TestNormalizePushDestination(t *testing.T) {
 	tests := []struct {
 		name      string
