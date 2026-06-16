@@ -6,7 +6,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/containers/podman/v5/pkg/bindings/system"
+	"go.podman.io/podman/v6/pkg/bindings/system"
 )
 
 func TestNewConnectionLinux5(t *testing.T) {

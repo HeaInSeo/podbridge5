@@ -6,7 +6,7 @@ README 본문은 프로젝트 소개에 집중하고, VM 기반 테스트 절차
 runtime 초기화 우선순위 자체는 [runtime-policy.ko.md](runtime-policy.ko.md)를 따릅니다.
 즉, host preflight와 실제 Go 코드 모두 `CONTAINER_HOST -> XDG_RUNTIME_DIR -> 기본 socket` 순서를 사용합니다.
 
-이 문서의 모든 경로는 `Go 1.25.5` 기준을 전제로 합니다.
+이 문서의 모든 경로는 `Go 1.25.6` 기준을 전제로 합니다.
 `podbridge5`는 다른 관련 프로젝트와 같은 `Go 1.25.x` baseline을 사용하며, 낮은 Go 버전 호환은 목표가 아닙니다.
 
 ## 검증 경로
@@ -22,7 +22,7 @@ runtime 초기화 우선순위 자체는 [runtime-policy.ko.md](runtime-policy.k
 - `make test-runtime`
 - `make test-runtime-integration`
 
-이 타깃들은 실행 전에 `go-version-check`를 거쳐 현재 `go` 바이너리가 `go1.25.5`인지 확인합니다.
+이 타깃들은 실행 전에 `go-version-check`를 거쳐 현재 `go` 바이너리가 `go1.25.6`인지 확인합니다.
 
 이 경로는 코드 수정과 경량 검증에 적합합니다.
 `test-unit`은 runtime 태그 테스트를 제외한 빠른 경로이고, `test-runtime`은 현재 호스트에서 Podman/buildah 환경까지 포함해 확인하는 경로입니다.
@@ -93,7 +93,7 @@ VM을 삭제해도 이 스크립트로 동일한 환경을 재현할 수 있다.
 
 1. 원격 장비에서 테스트용 VM 생성
 2. 필요한 패키지와 system `podman` socket 준비
-   이 단계에서 VM 내부 Go toolchain도 `1.25.5`로 맞춥니다.
+   이 단계에서 VM 내부 Go toolchain도 `1.25.6`으로 맞춥니다.
 3. 현재 로컬 `podbridge5` 워크트리를 tar.gz로 묶어 원격 호스트로 업로드
 4. 원격 호스트에서 `multipass transfer`로 fresh VM에 동기화
 5. VM 안에서 `go test ./...` 실행

@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/containers/buildah"
+	"go.podman.io/buildah"
 )
 
 type fakeConfiguredBuilder struct {

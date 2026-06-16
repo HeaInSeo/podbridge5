@@ -6,8 +6,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/containers/buildah/define"
-	"github.com/containers/storage"
+	"go.podman.io/buildah/define"
+	"go.podman.io/storage"
 )
 
 type fakeImageBuildRuntime struct {

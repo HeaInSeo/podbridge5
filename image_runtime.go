@@ -6,12 +6,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/containers/buildah"
-	"github.com/containers/buildah/define"
-	"github.com/containers/buildah/imagebuildah"
-	"github.com/containers/image/v5/transports/alltransports"
-	imageTypes "github.com/containers/image/v5/types"
-	"github.com/containers/storage"
+	"go.podman.io/buildah"
+	"go.podman.io/buildah/define"
+	"go.podman.io/buildah/imagebuildah"
+	"go.podman.io/image/v5/transports/alltransports"
+	imageTypes "go.podman.io/image/v5/types"
+	"go.podman.io/storage"
 )
 
 type imageBuildRuntime interface {

@@ -6,8 +6,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/csv"
-	"github.com/containers/podman/v5/pkg/bindings/containers"
 	"github.com/opencontainers/runtime-spec/specs-go"
+	"go.podman.io/podman/v6/pkg/bindings/containers"
 	"os"
 	"reflect"
 	"strconv"
@@ -84,4 +84,3 @@ func TestLogContainerStatsToCSV(t *testing.T) {
 		t.Errorf("invalid MemUsage %q: %v", rec[2], err)
 	}
 }
-

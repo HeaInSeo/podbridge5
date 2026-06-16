@@ -5,9 +5,9 @@ import (
 	"io"
 	"strings"
 
-	"github.com/containers/buildah"
-	"github.com/containers/buildah/define"
-	imageTypes "github.com/containers/image/v5/types"
+	"go.podman.io/buildah"
+	"go.podman.io/buildah/define"
+	imageTypes "go.podman.io/image/v5/types"
 )
 
 func DefaultImageBuildOptions(outputRef string) define.BuildOptions {

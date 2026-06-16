@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/containers/buildah"
-	"github.com/containers/buildah/define"
+	"go.podman.io/buildah"
+	"go.podman.io/buildah/define"
 )
 
 func TestDefaultImageBuildOptions(t *testing.T) {

@@ -61,7 +61,7 @@ func main() {
 	vmName := getenv("PODBRIDGE5_VM_NAME", "podbridge5-dev")
 	vmRepo := getenv("PODBRIDGE5_VM_REPO", "/home/ubuntu/work/src/github.com/HeaInSeo/podbridge5")
 	localRepo := getenv("PODBRIDGE5_LOCAL_REPO", "/opt/go/src/github.com/HeaInSeo/podbridge5")
-	goVersion := getenv("PODBRIDGE5_GO_VERSION", "1.25.5")
+	goVersion := getenv("PODBRIDGE5_GO_VERSION", "1.25.6")
 	cpus := getenv("PODBRIDGE5_VM_CPUS", "2")
 	memory := getenv("PODBRIDGE5_VM_MEMORY", "4G")
 	disk := getenv("PODBRIDGE5_VM_DISK", "20G")
@@ -103,8 +103,7 @@ func main() {
 	case "run-integration":
 		runCmd := strings.Join([]string{
 			"set -euo pipefail",
-			fmt.Sprintf("cd %q", vmRepo),
-			"sudo env PATH=/usr/local/go/bin:$PATH CGO_ENABLED=1 XDG_RUNTIME_DIR=/run CONTAINER_HOST=unix:///run/podman/podman.sock unshare -r -m go test -v -tags=integration ./...",
+			fmt.Sprintf("sudo env -C %q PATH=/usr/local/go/bin:$PATH CGO_ENABLED=1 XDG_RUNTIME_DIR=/run CONTAINER_HOST=unix:///run/podman/podman.sock unshare -r -m go test -v -tags=integration ./...", vmRepo),
 		}, "; ")
 		fmt.Println(mustExec(c, vmName, runCmd))
 	case "delete":

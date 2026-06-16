@@ -7,15 +7,15 @@ import (
 	"strings"
 
 	"github.com/HeaInSeo/utils"
-	"github.com/containers/buildah"
-	"github.com/containers/buildah/define"
-	"github.com/containers/common/pkg/config"
-	imageTypes "github.com/containers/image/v5/types"
-	"github.com/containers/podman/v5/pkg/bindings/images"
-	"github.com/containers/podman/v5/pkg/domain/entities/types"
-	"github.com/containers/storage"
-	"github.com/containers/storage/pkg/unshare"
 	"github.com/opencontainers/go-digest"
+	"go.podman.io/buildah"
+	"go.podman.io/buildah/define"
+	"go.podman.io/common/pkg/config"
+	imageTypes "go.podman.io/image/v5/types"
+	"go.podman.io/podman/v6/pkg/bindings/images"
+	"go.podman.io/podman/v6/pkg/domain/entities/types"
+	"go.podman.io/storage"
+	"go.podman.io/storage/pkg/unshare"
 )
 
 var (

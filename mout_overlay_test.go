@@ -3,7 +3,7 @@
 package podbridge5
 
 import (
-	"github.com/containers/storage/pkg/unshare"
+	"go.podman.io/storage/pkg/unshare"
 	"golang.org/x/sys/unix"
 	"os"
 	"path/filepath"

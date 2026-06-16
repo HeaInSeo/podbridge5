@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/containers/podman/v5/pkg/domain/entities"
-	"github.com/containers/podman/v5/pkg/specgen"
+	"go.podman.io/podman/v6/pkg/domain/entities"
+	"go.podman.io/podman/v6/pkg/specgen"
 )
 
 func TestNewPodSpec_NoOptions(t *testing.T) {

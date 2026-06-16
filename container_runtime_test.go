@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/containers/podman/v5/libpod/define"
-	entitiesTypes "github.com/containers/podman/v5/pkg/domain/entities/types"
-	"github.com/containers/podman/v5/pkg/specgen"
+	"go.podman.io/podman/v6/libpod/define"
+	entitiesTypes "go.podman.io/podman/v6/pkg/domain/entities/types"
+	"go.podman.io/podman/v6/pkg/specgen"
 )
 
 type fakeContainerRuntime struct {

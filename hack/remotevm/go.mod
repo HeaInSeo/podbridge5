@@ -1,6 +1,6 @@
 module github.com/HeaInSeo/podbridge5/hack/remotevm
 
-go 1.25.5
+go 1.25.6
 
 require golang.org/x/crypto v0.50.0
 
