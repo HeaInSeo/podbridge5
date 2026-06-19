@@ -61,6 +61,7 @@ overlay는 목표 기본값으로 유지하되, NodeVault 전환 시 node filesy
 
 ## 변경 이력
 
+- `v0.1.4` — `MountOverlay`의 fuse-overlayfs 폴백 제거(네이티브 rootless overlay만 시도), `CreateContainer`의 create-if-absent 계약 명시 및 관련 테스트 정리, remote VM 런타임 테스트 파이프라인 수정(소켓 권한, 출력 스트리밍 끊김), 합산 테스트 커버리지 70%+ 달성
 - `v0.1.2` — Podman/Buildah 의존성 업데이트, remote VM user namespace 통합 수정, user namespace Buildah 기본값 추가
 - `v0.1.1` — `seoyhaein/utils`를 `HeaInSeo/utils v0.0.7`로 교체 (API 변경 없음)
 
