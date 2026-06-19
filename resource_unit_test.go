@@ -29,6 +29,19 @@ func TestResourceOptions(t *testing.T) {
 			wantOOMScoreAdj: nil,
 		},
 		{
+			name: "Only NanoCPUs",
+			opts: []ContainerOptions{
+				WithNanoCPUs(500_000_000),
+			},
+			wantResources: &specs.LinuxResources{
+				CPU: &specs.LinuxCPU{
+					Quota:  ptrInt64(50000),
+					Period: ptrUint64(100000),
+				},
+			},
+			wantOOMScoreAdj: nil,
+		},
+		{
 			name: "Only memory limit",
 			opts: []ContainerOptions{
 				WithMemoryLimit(256 * 1024 * 1024),

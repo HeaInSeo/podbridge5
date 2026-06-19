@@ -216,6 +216,19 @@ func NewUserNamespaceStore(opts ...StoreOption) (storage.Store, error) {
 	return buildStore, nil
 }
 
+func NewUserNamespaceStoreWithConfig(config UserNamespaceBuildConfig) (storage.Store, error) {
+	buildStoreOptions, err := UserNamespaceStoreOptions(config)
+	if err != nil {
+		return nil, err
+	}
+	buildStore, err := storage.GetStore(buildStoreOptions)
+	if err != nil {
+		Log.Errorf("failed to get user namespace store: %v", err)
+		return nil, fmt.Errorf("storage.GetStore: %w", err)
+	}
+	return buildStore, nil
+}
+
 // shutdown force 를 true 로 잡아주면 다른 컨테이너에게도 영향을 줄 수 있음.
 // 기본적으로 false 를 유지하도록 하고, 모든 컨테이너가 종료되어 다른 레이어를 사용하지 않는다면 true 로 해줄 수 있음.
 func shutdown(store storage.Store, force bool) error {
@@ -406,6 +419,10 @@ func BuildAndPushDockerfileContent(ctx context.Context, store storage.Store, doc
 		return "", "", fmt.Errorf("store must not be nil")
 	}
 	return buildAndPushDockerfileContentWithRuntime(ctx, realImageBuildRuntime{}, store, dockerfileContent, outputRef)
+}
+
+func BuildAndPushUserNamespace(ctx context.Context, config UserNamespaceBuildConfig, dockerfileContent string) (imageID, digestStr string, err error) {
+	return buildAndPushUserNamespaceWithRuntime(ctx, realImageBuildRuntime{}, NewUserNamespaceStoreWithConfig, shutdown, config, dockerfileContent)
 }
 
 // newBuilder creates a new builder using the NewBuilder function with default options.

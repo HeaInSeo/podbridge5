@@ -3,87 +3,15 @@
 package podbridge5
 
 import (
-	"go.podman.io/storage/pkg/unshare"
 	"golang.org/x/sys/unix"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
-
-// 테스트 문제있는데 이거 중요하게 살펴봐야 함.
-// https://docs.redhat.com/ko/documentation/red_hat_openshift_dev_spaces/3.17/html/administration_guide/configuring-fuse
-// 로컬에서 생성하는게 힘들 수 있는데, 내부에서 생성해주는 방법도 생각해보고, 다양한 방법을 고려해보자.
-// fuse-overlayfs2
-
-func canMountFUSE() bool {
-	f, err := os.OpenFile("/dev/fuse", os.O_RDWR, 0)
-	if err != nil {
-		return false
-	}
-	f.Close()
-	return true
-}
-
-func hasUserAllowOther() bool {
-	data, err := os.ReadFile("/etc/fuse.conf")
-	if err != nil {
-		return false
-	}
-	for _, line := range strings.Split(string(data), "\n") {
-		trimmed := strings.TrimSpace(line)
-		// Ignore commented lines
-		if strings.HasPrefix(trimmed, "#") {
-			continue
-		}
-		if trimmed == "user_allow_other" || strings.HasPrefix(trimmed, "user_allow_other ") {
-			return true
-		}
-	}
-	return false
-}
-
-// TestMountOverlayScenarios skips tests if running rootless without FUSE support.
-// /dev/fuse 에 접근이 가능한지 테스트, 접근 불가능하면 fuse-overlayfs 를 사용할 수 없음.
-func TestMountOverlayScenarios(t *testing.T) {
-	t.Helper()
-	// Skip if rootless without FUSE support
-	if unshare.IsRootless() && !canMountFUSE() {
-		t.Skip("/dev/fuse not accessible; skipping OverlayFS tests")
-	}
-}
-
-// TestFuseConfUserAllowOther verifies that /etc/fuse.conf contains the "user_allow_other" directive.
-// If the file is missing or the directive is absent, the test is skipped.
-func TestFuseConfUserAllowOther(t *testing.T) {
-	t.Helper()
-	const fuseConf = "/etc/fuse.conf"
-	data, err := os.ReadFile(fuseConf)
-	if err != nil {
-		t.Skipf("Cannot read %s: %v; skipping FUSE config test", fuseConf, err)
-	}
-	for _, line := range strings.Split(string(data), "\n") {
-		trimmed := strings.TrimSpace(line)
-		// Ignore commented lines
-		if strings.HasPrefix(trimmed, "#") {
-			continue
-		}
-		if trimmed == "user_allow_other" || strings.HasPrefix(trimmed, "user_allow_other ") {
-			return
-		}
-	}
-	t.Skipf("%s does not contain 'user_allow_other'; skipping FUSE config test", fuseConf)
-}
 
 // setupOverlay mounts and returns lower, upper, work, merged dirs, and a cleanup function.
 func setupOverlay(t *testing.T) (lower, upper, work, merged string, cleanup func()) {
 	t.Helper()
-
-	if unshare.IsRootless() {
-		if !canMountFUSE() || !hasUserAllowOther() {
-			t.Skip("FUSE overlay not supported in this environment")
-		}
-	}
 
 	base := t.TempDir()
 	lower = filepath.Join(base, "lower")

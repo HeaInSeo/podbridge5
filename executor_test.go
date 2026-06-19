@@ -31,6 +31,38 @@ func TestGenerateExecutor(t *testing.T) {
 	}
 }
 
+func TestGenerateExecutorFailPathsAndIdempotency(t *testing.T) {
+	if _, _, err := GenerateExecutor("", "executor.sh", "./user_script.sh"); err == nil {
+		t.Fatal("expected empty path error")
+	}
+	if _, _, err := GenerateExecutor(t.TempDir(), "", "./user_script.sh"); err == nil {
+		t.Fatal("expected empty file name error")
+	}
+
+	dir := t.TempDir()
+	firstFile, firstPath, err := GenerateExecutor(dir, "executor.sh", "./user_script.sh")
+	if err != nil {
+		t.Fatalf("first GenerateExecutor failed: %v", err)
+	}
+	if firstFile == nil || firstPath == nil {
+		t.Fatalf("expected first call to create and open executor")
+	}
+	if err := firstFile.Close(); err != nil {
+		t.Fatalf("close first executor: %v", err)
+	}
+
+	secondFile, secondPath, err := GenerateExecutor(dir, "executor.sh", "./user_script.sh")
+	if err != nil {
+		t.Fatalf("second GenerateExecutor failed: %v", err)
+	}
+	if secondFile != nil {
+		t.Fatalf("idempotent GenerateExecutor should not reopen unchanged file")
+	}
+	if secondPath == nil || *secondPath != *firstPath {
+		t.Fatalf("idempotent path mismatch: first=%v second=%v", firstPath, secondPath)
+	}
+}
+
 func TestProcessScript(t *testing.T) {
 	// 테스트 경로 설정
 	testPath := "./test-scripts"
@@ -65,6 +97,15 @@ echo "Hello, World!"`
 
 	if string(data) != expectedContent {
 		t.Errorf("unexpected script content. Got: %s, Want: %s", string(data), expectedContent)
+	}
+}
+
+func TestProcessScriptRejectsInvalidInput(t *testing.T) {
+	if _, err := ProcessScript("echo nope", ""); err == nil {
+		t.Fatal("expected invalid path error")
+	}
+	if _, err := ProcessScript("#!/bin/bash\nif true; then\n", t.TempDir()); err == nil {
+		t.Fatal("expected shell syntax error")
 	}
 }
 
@@ -113,5 +154,20 @@ func TestCompareFiles(t *testing.T) {
 	}
 	if same {
 		t.Errorf("Expected files to be different, but they are the same")
+	}
+}
+
+func TestCompareFilesFailPaths(t *testing.T) {
+	dir := t.TempDir()
+	existing := filepath.Join(dir, "existing.txt")
+	if err := os.WriteFile(existing, []byte("x"), 0o644); err != nil {
+		t.Fatalf("write existing file: %v", err)
+	}
+
+	if _, err := compareFiles(filepath.Join(dir, "missing.txt"), existing); err == nil {
+		t.Fatal("expected first file open error")
+	}
+	if _, err := compareFiles(existing, filepath.Join(dir, "missing.txt")); err == nil {
+		t.Fatal("expected second file open error")
 	}
 }

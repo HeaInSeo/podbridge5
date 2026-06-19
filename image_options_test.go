@@ -2,7 +2,9 @@ package podbridge5
 
 import (
 	"bytes"
+	"os"
 	"reflect"
+	"strconv"
 	"testing"
 
 	"go.podman.io/buildah"
@@ -73,6 +75,53 @@ func TestStoreOptions(t *testing.T) {
 	}
 }
 
+func TestUserNamespaceStoreOptions(t *testing.T) {
+	tests := []struct {
+		name        string
+		mode        StorageMode
+		wantDriver  string
+		wantOptions []string
+	}{
+		{name: "vfs", mode: StorageVFS, wantDriver: "vfs"},
+		{name: "native overlay", mode: StorageNativeOverlay, wantDriver: "overlay"},
+		{name: "fuse overlay", mode: StorageFuseOverlay, wantDriver: "overlay", wantOptions: []string{"overlay.mount_program=/usr/bin/fuse-overlayfs"}},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := UserNamespaceStoreOptions(UserNamespaceBuildConfig{
+				StorageMode: tc.mode,
+				RunRoot:     "/run/custom",
+				GraphRoot:   "/graph/custom",
+			})
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got.RunRoot != "/run/custom" || got.GraphRoot != "/graph/custom" {
+				t.Fatalf("unexpected roots: %q %q", got.RunRoot, got.GraphRoot)
+			}
+			if got.GraphDriverName != tc.wantDriver {
+				t.Fatalf("unexpected driver: got %q want %q", got.GraphDriverName, tc.wantDriver)
+			}
+			if !reflect.DeepEqual(got.GraphDriverOptions, tc.wantOptions) {
+				t.Fatalf("unexpected graph driver options: got %v want %v", got.GraphDriverOptions, tc.wantOptions)
+			}
+		})
+	}
+}
+
+func TestUserNamespaceStoreOptionsRequiresExplicitStorageMode(t *testing.T) {
+	if _, err := UserNamespaceStoreOptions(UserNamespaceBuildConfig{}); err == nil {
+		t.Fatal("expected error for empty storage mode")
+	}
+}
+
+func TestUserNamespaceStoreOptionsRejectsUnknownStorageMode(t *testing.T) {
+	if _, err := UserNamespaceStoreOptions(UserNamespaceBuildConfig{StorageMode: "overlay-maybe"}); err == nil {
+		t.Fatal("expected error for unsupported storage mode")
+	}
+}
+
 func TestUserNamespaceImageBuildOptions(t *testing.T) {
 	got, err := UserNamespaceImageBuildOptions(UserNamespaceBuildConfig{
 		OutputRef:        "registry.example.com/team/tool:latest",
@@ -102,12 +151,72 @@ func TestUserNamespaceImageBuildOptions(t *testing.T) {
 	}
 }
 
+func TestUserNamespaceImageBuildOptionsWithExplicitIsolation(t *testing.T) {
+	got, err := UserNamespaceImageBuildOptions(UserNamespaceBuildConfig{
+		OutputRef: "registry.example.com/team/tool:latest",
+		Isolation: BuildIsolationOCI,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.Isolation != define.IsolationOCI {
+		t.Fatalf("unexpected isolation: %v", got.Isolation)
+	}
+}
+
+func TestUserNamespaceImageBuildOptionsWithRegistryCertDir(t *testing.T) {
+	got, err := UserNamespaceImageBuildOptions(UserNamespaceBuildConfig{
+		OutputRef:           "registry.example.com/team/tool:latest",
+		RegistryCertDirPath: "/etc/containers/certs.d",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.SystemContext == nil {
+		t.Fatal("expected system context")
+	}
+	if got.SystemContext.DockerPerHostCertDirPath != "/etc/containers/certs.d" {
+		t.Fatalf("unexpected cert dir: %q", got.SystemContext.DockerPerHostCertDirPath)
+	}
+}
+
+func TestUserNamespaceImageBuildOptionsRejectsUnknownIsolation(t *testing.T) {
+	if _, err := UserNamespaceImageBuildOptions(UserNamespaceBuildConfig{
+		OutputRef: "registry.example.com/team/tool:latest",
+		Isolation: "bad-isolation",
+	}); err == nil {
+		t.Fatal("expected error for unknown isolation")
+	}
+}
+
+func TestUserNamespaceImageBuildOptionsRejectsInvalidCacheRef(t *testing.T) {
+	if _, err := UserNamespaceImageBuildOptions(UserNamespaceBuildConfig{
+		OutputRef: "registry.example.com/team/tool:latest",
+		CacheRef:  "not a valid reference",
+	}); err == nil {
+		t.Fatal("expected error for invalid cache ref")
+	}
+}
+
+func TestBuildIsolationOCIRootless(t *testing.T) {
+	got, err := UserNamespaceImageBuildOptions(UserNamespaceBuildConfig{
+		OutputRef: "registry.example.com/team/tool:latest",
+		Isolation: BuildIsolationOCIRootless,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.Isolation != define.IsolationOCIRootless {
+		t.Fatalf("unexpected isolation: %v", got.Isolation)
+	}
+}
+
 func TestDefaultUserNamespaceBuildEnvironment(t *testing.T) {
 	got := DefaultUserNamespaceBuildEnvironment()
 	if got[ContainersUserNamespaceConfiguredEnv] != "done" {
 		t.Fatalf("expected user namespace configured marker")
 	}
-	if got[ContainersRootlessUIDEnv] != "1000" || got[ContainersRootlessGIDEnv] != "1000" {
+	if got[ContainersRootlessUIDEnv] != strconv.Itoa(os.Geteuid()) || got[ContainersRootlessGIDEnv] != strconv.Itoa(os.Getegid()) {
 		t.Fatalf("unexpected rootless id env: uid=%q gid=%q", got[ContainersRootlessUIDEnv], got[ContainersRootlessGIDEnv])
 	}
 	if got[BuildahIsolationEnv] != "chroot" {
@@ -121,6 +230,82 @@ func TestDefaultUserNamespaceBuildEnvironment(t *testing.T) {
 	}
 	if got[XDGConfigHomeEnv] != DefaultUserNamespaceHome+"/.config" {
 		t.Fatalf("unexpected config home env: %q", got[XDGConfigHomeEnv])
+	}
+}
+
+func TestUserNamespaceBuildEnvironmentWithExplicitIsolation(t *testing.T) {
+	got, err := UserNamespaceBuildEnvironment(UserNamespaceBuildConfig{Isolation: BuildIsolationOCI})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got[BuildahIsolationEnv] != "oci" {
+		t.Fatalf("unexpected isolation env: %q", got[BuildahIsolationEnv])
+	}
+}
+
+func TestUserNamespaceBuildEnvironmentRejectsUnknownIsolation(t *testing.T) {
+	if _, err := UserNamespaceBuildEnvironment(UserNamespaceBuildConfig{Isolation: "bad-isolation"}); err == nil {
+		t.Fatal("expected error for unknown isolation")
+	}
+}
+
+func TestUserNamespaceBuildExecutionProfile(t *testing.T) {
+	got, err := UserNamespaceBuildExecutionProfile(UserNamespaceBuildConfig{
+		Runtime:                   "crun",
+		Isolation:                 BuildIsolationOCI,
+		StorageMode:               StorageFuseOverlay,
+		RunRoot:                   "/run/custom",
+		GraphRoot:                 "/graph/custom",
+		FuseOverlayfsMountProgram: "/custom/fuse-overlayfs",
+		RegistryCertDirPath:       "/etc/containers/certs.d",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.ActualEUID != os.Geteuid() || got.ActualEGID != os.Getegid() {
+		t.Fatalf("unexpected actual IDs: uid=%d gid=%d", got.ActualEUID, got.ActualEGID)
+	}
+	if !got.UserNamespace {
+		t.Fatal("expected user namespace profile marker")
+	}
+	if got.StorageMode != StorageFuseOverlay || got.StorageDriver != "overlay" {
+		t.Fatalf("unexpected storage profile: mode=%q driver=%q", got.StorageMode, got.StorageDriver)
+	}
+	if got.RunRoot != "/run/custom" || got.GraphRoot != "/graph/custom" {
+		t.Fatalf("unexpected roots: %q %q", got.RunRoot, got.GraphRoot)
+	}
+	if got.MountProgram != "/custom/fuse-overlayfs" {
+		t.Fatalf("unexpected mount program: %q", got.MountProgram)
+	}
+	if got.Isolation != "oci" || got.Runtime != "crun" {
+		t.Fatalf("unexpected build profile: isolation=%q runtime=%q", got.Isolation, got.Runtime)
+	}
+	if got.BuildahVersion != buildah.Version {
+		t.Fatalf("unexpected buildah version: %q", got.BuildahVersion)
+	}
+	if got.RegistryCertDirPath != "/etc/containers/certs.d" {
+		t.Fatalf("unexpected cert dir: %q", got.RegistryCertDirPath)
+	}
+}
+
+func TestUserNamespaceBuildExecutionProfileRejectsInvalidStorageMode(t *testing.T) {
+	if _, err := UserNamespaceBuildExecutionProfile(UserNamespaceBuildConfig{StorageMode: "bad-storage"}); err == nil {
+		t.Fatal("expected error for bad storage mode")
+	}
+}
+
+func TestUserNamespaceBuildExecutionProfileRejectsInvalidIsolation(t *testing.T) {
+	if _, err := UserNamespaceBuildExecutionProfile(UserNamespaceBuildConfig{
+		StorageMode: StorageVFS,
+		Isolation:   "bad-isolation",
+	}); err == nil {
+		t.Fatal("expected error for bad isolation")
+	}
+}
+
+func TestOverlayMountProgramNoOption(t *testing.T) {
+	if got := overlayMountProgram([]string{"overlay.size=1G"}); got != "" {
+		t.Fatalf("expected empty mount program, got %q", got)
 	}
 }
 
