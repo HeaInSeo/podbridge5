@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/csv"
-	"github.com/opencontainers/runtime-spec/specs-go"
 	"go.podman.io/podman/v6/pkg/bindings/containers"
 	"os"
 	"reflect"

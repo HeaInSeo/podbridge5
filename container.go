@@ -141,7 +141,13 @@ func StartContainer(ctx context.Context, spec *specgen.SpecGenerator) (string, e
 	return startContainerWithRuntime(ctx, podmanContainerRuntime{}, spec)
 }
 
-// CreateContainer 컨테이너 생성
+// CreateContainer creates a new container from conSpec.
+//
+// Contract: this is a create-if-absent API, not an idempotent get-or-create.
+// If a container named conSpec.Name already exists, it returns an error
+// wrapping ErrContainerAlreadyExists instead of reusing the existing
+// container. Callers that want reuse semantics must check for that error
+// (or call ContainerExists/InspectContainer) themselves.
 func CreateContainer(ctx context.Context, conSpec *specgen.SpecGenerator) (*CreateContainerResult, error) {
 	return createContainerWithRuntime(ctx, podmanContainerRuntime{}, conSpec)
 }

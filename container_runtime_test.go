@@ -167,3 +167,86 @@ func TestStartContainerWithRuntime_PropagatesStartError(t *testing.T) {
 		t.Fatalf("RemoveContainer called with %q, want start-id", runtime.removedID)
 	}
 }
+
+func TestStartContainerWithRuntimeRejectsInvalidInput(t *testing.T) {
+	runtime := &fakeContainerRuntime{}
+	if _, err := startContainerWithRuntime(nil, runtime, &specgen.SpecGenerator{}); err == nil {
+		t.Fatal("expected nil context error")
+	}
+	if _, err := startContainerWithRuntime(context.Background(), runtime, nil); err == nil {
+		t.Fatal("expected nil spec error")
+	}
+}
+
+func TestCreateContainerWithRuntimeFailPaths(t *testing.T) {
+	validSpec, err := NewSpec(WithImageName("docker.io/library/alpine:latest"), WithName("demo-container"))
+	if err != nil {
+		t.Fatalf("NewSpec() error = %v", err)
+	}
+
+	tests := []struct {
+		name    string
+		runtime *fakeContainerRuntime
+		spec    *specgen.SpecGenerator
+		wantErr error
+	}{
+		{
+			name:    "missing image and name",
+			runtime: &fakeContainerRuntime{},
+			spec:    &specgen.SpecGenerator{},
+		},
+		{
+			name:    "exists check failure",
+			runtime: &fakeContainerRuntime{containerExistsErr: errors.New("exists denied")},
+			spec:    validSpec,
+		},
+		{
+			name:    "existing inspect failure",
+			runtime: &fakeContainerRuntime{containerExists: true, inspectErr: errors.New("inspect denied")},
+			spec:    validSpec,
+		},
+		{
+			name:    "ensure image failure",
+			runtime: &fakeContainerRuntime{ensureImageErr: errors.New("pull denied")},
+			spec:    validSpec,
+		},
+		{
+			name:    "create failure",
+			runtime: &fakeContainerRuntime{createErr: errors.New("create denied")},
+			spec:    validSpec,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := createContainerWithRuntime(context.Background(), tc.runtime, tc.spec)
+			if err == nil {
+				t.Fatal("expected error")
+			}
+			if got != nil {
+				t.Fatalf("expected nil result, got %+v", got)
+			}
+			if tc.wantErr != nil && !errors.Is(err, tc.wantErr) {
+				t.Fatalf("error = %v, want wrapping %v", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestInspectContainerWithRuntime(t *testing.T) {
+	want := &define.InspectContainerData{ID: "container-id"}
+	runtime := &fakeContainerRuntime{inspectResp: want}
+
+	got, err := inspectContainerWithRuntime(context.Background(), runtime, "container-id")
+	if err != nil {
+		t.Fatalf("inspectContainerWithRuntime returned error: %v", err)
+	}
+	if got != want {
+		t.Fatalf("inspect result pointer mismatch")
+	}
+
+	runtime.inspectErr = errors.New("inspect denied")
+	if _, err := inspectContainerWithRuntime(context.Background(), runtime, "container-id"); err == nil {
+		t.Fatal("expected inspect error")
+	}
+}

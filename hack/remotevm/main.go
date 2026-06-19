@@ -87,6 +87,15 @@ func main() {
 			"sudo systemctl enable --now podman.socket",
 			"sudo test -S /run/podman/podman.sock",
 			"sudo podman info >/dev/null",
+			// run-integration connects as the unprivileged ubuntu user (it
+			// needs unshare -r -m for unprivileged mount/overlay tests), so
+			// it needs its own rootless podman socket, not the root-owned
+			// system one. enable-linger keeps that user service running
+			// outside an interactive login session.
+			"sudo loginctl enable-linger ubuntu",
+			"systemctl --user enable --now podman.socket",
+			"test -S /run/user/1000/podman/podman.sock",
+			"podman info >/dev/null",
 			"pkg-config --modversion gpgme",
 			"go version",
 		}
@@ -97,19 +106,11 @@ func main() {
 		}
 		fmt.Printf("synced %s -> %s on %s\n", localRepo, vmRepo, vmName)
 	case "run":
-		runCmd := strings.Join([]string{
-			"set -euo pipefail",
-			fmt.Sprintf("cd %q", vmRepo),
-			"sudo env PATH=/usr/local/go/bin:$PATH CGO_ENABLED=1 XDG_RUNTIME_DIR=/run CONTAINER_HOST=unix:///run/podman/podman.sock go test ./...",
-		}, "; ")
-		fmt.Println(mustExec(c, vmName, runCmd))
+		testCmd := "sudo env PATH=/usr/local/go/bin:$PATH CGO_ENABLED=1 XDG_RUNTIME_DIR=/run CONTAINER_HOST=unix:///run/podman/podman.sock go test -v -tags=runtime -coverprofile=coverage-runtime.out -coverpkg=./... ./... ; sudo chown $(id -u):$(id -g) coverage-runtime.out"
+		runTestsAndFetch(cfg, c, vmName, vmRepo, localRepo, testCmd, "test-runtime.log", "coverage-runtime.out")
 	case "run-integration":
-		runCmd := strings.Join([]string{
-			"set -euo pipefail",
-			fmt.Sprintf("cd %q", vmRepo),
-			"env PATH=/usr/local/go/bin:$PATH CGO_ENABLED=1 XDG_RUNTIME_DIR=/run/user/1000 CONTAINER_HOST=unix:///run/podman/podman.sock unshare -r -m go test -v -tags=integration ./...",
-		}, "; ")
-		fmt.Println(mustExec(c, vmName, runCmd))
+		testCmd := "env PATH=/usr/local/go/bin:$PATH CGO_ENABLED=1 XDG_RUNTIME_DIR=/run/user/1000 CONTAINER_HOST=unix:///run/user/1000/podman/podman.sock unshare -r -m go test -v -tags=runtime,integration -coverprofile=coverage-runtime-integration.out -coverpkg=./... ./..."
+		runTestsAndFetch(cfg, c, vmName, vmRepo, localRepo, testCmd, "test-runtime-integration.log", "coverage-runtime-integration.out")
 	case "delete":
 		run(c, fmt.Sprintf("multipass delete -p %s >/dev/null 2>&1 || true", vmName))
 		run(c, "multipass purge >/dev/null 2>&1 || true")
@@ -320,6 +321,126 @@ func uploadFileWithCLI(cfg config, localPath, remotePath string) error {
 	result := strings.TrimSpace(string(out))
 	if err != nil {
 		return fmt.Errorf("scp upload to %s: %w\n%s", target, err, result)
+	}
+	return nil
+}
+
+// runTestsAndFetch runs testCmd inside the VM with its output redirected to
+// a log file rather than streamed back through `multipass exec` directly.
+// Streaming very verbose output (go test -v plus a cold `go mod download`)
+// through multipass exec's exec channel has been observed to break the
+// connection partway through with no error detail; redirecting to a file
+// and pulling it back via `multipass transfer` (the same mechanism used for
+// the worktree archive and coverage profiles) avoids that entirely.
+func runTestsAndFetch(cfg config, c remoteClient, vmName, vmRepo, localRepo, testCmd, logName, coverageName string) {
+	script := strings.Join([]string{
+		fmt.Sprintf("cd %q || exit 1", vmRepo),
+		fmt.Sprintf("rm -f %q", logName),
+		fmt.Sprintf("{ %s ; } > %q 2>&1", testCmd, logName),
+		fmt.Sprintf("echo \"EXITCODE=$?\" >> %q", logName),
+	}, "; ")
+	if _, err := c.MultipassExec(vmName, script); err != nil {
+		log.Fatalf("run %s on %s: %v", logName, vmName, err)
+	}
+
+	if err := fetchRemoteFile(cfg, c, vmName, vmRepo, localRepo, logName); err != nil {
+		log.Fatal(err)
+	}
+	logPath := filepath.Join(localRepo, "artifacts", logName)
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		log.Fatalf("read fetched log %s: %v", logPath, err)
+	}
+	fmt.Print(string(data))
+
+	if err := fetchRemoteFile(cfg, c, vmName, vmRepo, localRepo, coverageName); err != nil {
+		log.Fatal(err)
+	}
+
+	if exitCode := lastExitCode(string(data)); exitCode != "0" {
+		log.Fatalf("%s failed on %s (exit code %s) - see %s", logName, vmName, exitCode, logPath)
+	}
+}
+
+func lastExitCode(logContent string) string {
+	lines := strings.Split(strings.TrimRight(logContent, "\n"), "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		if rest, ok := strings.CutPrefix(lines[i], "EXITCODE="); ok {
+			return strings.TrimSpace(rest)
+		}
+	}
+	return "unknown"
+}
+
+// fetchRemoteFile pulls a file written inside the VM (a -coverprofile or a
+// redirected test log) back to localRepo/artifacts via `multipass transfer`
+// followed by scp/ssh, so it can be inspected or merged locally.
+func fetchRemoteFile(cfg config, c remoteClient, vmName, vmRepo, localRepo, fileName string) error {
+	remoteHostPath := fmt.Sprintf("/home/%s/%s-%s", cfg.User, vmName, fileName)
+	if _, err := c.Run(fmt.Sprintf("rm -f %s", shellQuote(remoteHostPath))); err != nil {
+		return fmt.Errorf("remove stale remote file: %w", err)
+	}
+	defer run(c, fmt.Sprintf("rm -f %s >/dev/null 2>&1 || true", shellQuote(remoteHostPath)))
+
+	vmPath := filepath.Join(vmRepo, fileName)
+	if _, err := c.Run(fmt.Sprintf("multipass transfer %s:%s %s", vmName, shellQuote(vmPath), shellQuote(remoteHostPath))); err != nil {
+		return fmt.Errorf("multipass transfer %s from %s: %w", fileName, vmName, err)
+	}
+
+	artifactsDir := filepath.Join(localRepo, "artifacts")
+	if err := os.MkdirAll(artifactsDir, 0o755); err != nil {
+		return fmt.Errorf("create artifacts dir: %w", err)
+	}
+	localPath := filepath.Join(artifactsDir, fileName)
+	if err := downloadFile(cfg, remoteHostPath, localPath); err != nil {
+		return err
+	}
+	fmt.Fprintf(os.Stderr, "fetched %s -> %s\n", fileName, localPath)
+	return nil
+}
+
+func downloadFile(cfg config, remotePath, localPath string) error {
+	if cfg.Password == "" {
+		return downloadFileWithCLI(cfg, remotePath, localPath)
+	}
+
+	sshCfg, err := newSSHClientConfig(cfg)
+	if err != nil {
+		return err
+	}
+	conn, err := ssh.Dial("tcp", net.JoinHostPort(cfg.Host, cfg.Port), sshCfg)
+	if err != nil {
+		return fmt.Errorf("ssh dial for download: %w", err)
+	}
+	defer conn.Close()
+
+	sess, err := conn.NewSession()
+	if err != nil {
+		return fmt.Errorf("new download session: %w", err)
+	}
+	defer sess.Close()
+
+	outFile, err := os.Create(localPath)
+	if err != nil {
+		return fmt.Errorf("create local file %s: %w", localPath, err)
+	}
+	defer outFile.Close()
+
+	sess.Stdout = outFile
+	if err := sess.Run(fmt.Sprintf("cat %s", shellQuote(remotePath))); err != nil {
+		return fmt.Errorf("download %s: %w", remotePath, err)
+	}
+	return nil
+}
+
+func downloadFileWithCLI(cfg config, remotePath, localPath string) error {
+	source := fmt.Sprintf("%s@%s:%s", cfg.User, cfg.Host, remotePath)
+	args := []string{"-o", "BatchMode=yes", "-P", cfg.Port, source, localPath}
+	cmd := exec.Command("scp", args...)
+	out, err := cmd.CombinedOutput()
+	result := strings.TrimSpace(string(out))
+	if err != nil {
+		return fmt.Errorf("scp download from %s: %w\n%s", source, err, result)
 	}
 	return nil
 }

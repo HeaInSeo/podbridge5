@@ -99,6 +99,13 @@ jobs:
       - name: go vet
         run: go vet -tags "${{ env.BUILD_TAGS }}" ./...
 
+      # Compile-only check for runtime/integration-tagged test files. These
+      # never run in test-unit (no live Podman socket / VM here), so without
+      # this they can silently bit-rot and reference removed/renamed symbols
+      # until someone runs them on the remote VM (see make vm-test-runtime).
+      - name: go vet (runtime + integration build tags)
+        run: go vet -tags "${{ env.BUILD_TAGS }} runtime integration" ./...
+
   # ────────────────────────────────────────────────────────────────
   # 3. 유닛 테스트 (podman/buildah 런타임 불필요)
   # ────────────────────────────────────────────────────────────────
