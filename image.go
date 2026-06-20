@@ -22,9 +22,9 @@ var (
 	digester = digest.Canonical.Digester()
 
 	defaultRunOptions = buildah.RunOptions{
-		User:      "root",
-		Isolation: define.IsolationOCI,
-		Runtime:   "runc",
+		User:             "root",
+		Isolation:        define.IsolationOCI,
+		ConfigureNetwork: define.NetworkDisabled,
 	}
 
 	// 사용하지 않음 주석처리함. 삭제하지 않음.

@@ -62,6 +62,10 @@ type UserNamespaceBuildConfig struct {
 	GraphRoot                 string
 	FuseOverlayfsMountProgram string
 	RegistryCertDirPath       string
+	// InsecureSkipTLSVerify disables TLS verification when pushing/pulling
+	// against the configured registry (e.g. a plain-HTTP in-cluster cache).
+	// Defaults to false (verify TLS), matching prior behavior.
+	InsecureSkipTLSVerify bool
 }
 
 type UserNamespaceExecutionProfile struct {
@@ -240,6 +244,7 @@ func UserNamespaceImageBuildOptions(config UserNamespaceBuildConfig) (define.Bui
 	buildOpts.Isolation = isolation
 	buildOpts.SystemContext = UserNamespaceSystemContext(config)
 	buildOpts.Layers = true
+	buildOpts.RemoveIntermediateCtrs = true
 	return buildOpts, nil
 }
 
@@ -247,6 +252,9 @@ func UserNamespaceSystemContext(config UserNamespaceBuildConfig) *imageTypes.Sys
 	sysCtx := &imageTypes.SystemContext{}
 	if certDir := strings.TrimSpace(config.RegistryCertDirPath); certDir != "" {
 		sysCtx.DockerPerHostCertDirPath = certDir
+	}
+	if config.InsecureSkipTLSVerify {
+		sysCtx.DockerInsecureSkipTLSVerify = imageTypes.OptionalBoolTrue
 	}
 	return sysCtx
 }
@@ -354,7 +362,7 @@ func newDefaultAddAndCopyOptions(hasher io.Writer) buildah.AddAndCopyOptions {
 
 func newDefaultAddAndCopyOptionsWithDryRun(hasher io.Writer, dryRun bool) buildah.AddAndCopyOptions {
 	return NewAddAndCopyOptions(
-		WithChmod("0o755"),
+		WithChmod("755"),
 		WithChown("0:0"),
 		WithHasher(hasher),
 		WithContextDir("."),

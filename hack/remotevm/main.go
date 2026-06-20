@@ -73,10 +73,19 @@ func main() {
 		run(c, fmt.Sprintf("multipass launch 24.04 --name %s --cpus %s --memory %s --disk %s", vmName, cpus, memory, disk))
 		fmt.Println(mustRun(c, fmt.Sprintf("multipass info %s", vmName)))
 	case "prepare":
+		// Ubuntu 24.04's crun package (1.14.1) has a version-check bug that
+		// rejects the OCI runtime-spec version emitted by our vendored
+		// buildah/runtime-spec: "crun: unknown version specified". Fixed
+		// upstream in crun 1.14.3+; pin a known-good static build instead of
+		// trusting whatever apt happens to ship.
+		const crunVersion = "1.28"
 		commands := []string{
 			"set -euo pipefail",
 			"current_go_version() { if command -v go >/dev/null 2>&1; then go env GOVERSION 2>/dev/null || go version | cut -d\" \" -f3; else echo missing; fi; }",
 			"if ! command -v buildah >/dev/null 2>&1 || ! command -v fuse-overlayfs >/dev/null 2>&1 || ! command -v pkg-config >/dev/null 2>&1 || ! pkg-config --exists gpgme >/dev/null 2>&1 || [ ! -f /usr/include/btrfs/version.h ] || ! command -v git >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1 || ! command -v tar >/dev/null 2>&1 || ! command -v podman >/dev/null 2>&1 || ! command -v gcc >/dev/null 2>&1; then sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y buildah fuse-overlayfs pkg-config libgpgme-dev libbtrfs-dev git curl tar podman gcc g++; fi",
+			"current_crun_version() { crun --version 2>/dev/null | head -n1 | cut -d\" \" -f3; }",
+			fmt.Sprintf("if [ \"$(current_crun_version)\" != %q ]; then curl -fsSL %q -o /tmp/crun && chmod +x /tmp/crun && sudo mv /tmp/crun /usr/bin/crun; fi", crunVersion, fmt.Sprintf("https://github.com/containers/crun/releases/download/%s/crun-%s-linux-amd64", crunVersion, crunVersion)),
+			fmt.Sprintf("[ \"$(current_crun_version)\" = %q ]", crunVersion),
 			fmt.Sprintf("if [ \"$(current_go_version)\" != %q ]; then curl -fsSL %q -o /tmp/podbridge5-go.tar.gz && sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf /tmp/podbridge5-go.tar.gz && rm -f /tmp/podbridge5-go.tar.gz; fi", "go"+goVersion, fmt.Sprintf("https://go.dev/dl/go%s.linux-amd64.tar.gz", goVersion)),
 			"export PATH=/usr/local/go/bin:$PATH",
 			fmt.Sprintf("[ \"$(current_go_version)\" = %q ]", "go"+goVersion),
@@ -98,6 +107,7 @@ func main() {
 			"podman info >/dev/null",
 			"pkg-config --modversion gpgme",
 			"go version",
+			"crun --version",
 		}
 		fmt.Println(mustExec(c, vmName, strings.Join(commands, "; ")))
 	case "sync":
@@ -109,7 +119,22 @@ func main() {
 		testCmd := "sudo env PATH=/usr/local/go/bin:$PATH CGO_ENABLED=1 XDG_RUNTIME_DIR=/run CONTAINER_HOST=unix:///run/podman/podman.sock go test -v -tags=runtime -coverprofile=coverage-runtime.out -coverpkg=./... ./... ; sudo chown $(id -u):$(id -g) coverage-runtime.out"
 		runTestsAndFetch(cfg, c, vmName, vmRepo, localRepo, testCmd, "test-runtime.log", "coverage-runtime.out")
 	case "run-integration":
-		testCmd := "env PATH=/usr/local/go/bin:$PATH CGO_ENABLED=1 XDG_RUNTIME_DIR=/run/user/1000 CONTAINER_HOST=unix:///run/user/1000/podman/podman.sock unshare -r -m go test -v -tags=runtime,integration -coverprofile=coverage-runtime-integration.out -coverpkg=./... ./..."
+		// Plain `unshare -r -m` only creates a single calling-uid->0 mapping,
+		// not the full subuid/subgid range configured in vm-prepare, so
+		// extracting a layer that chowns into a wider GID (e.g. /etc/shadow
+		// at gid 42) fails with "potentially insufficient UIDs or GIDs
+		// available in user namespace". `podman unshare` builds the user
+		// namespace via newuidmap/newgidmap using the configured subuid/
+		// subgid ranges (so the full range is available) and also exports
+		// _CONTAINERS_USERNS_CONFIGURED/_CONTAINERS_ROOTLESS_UID/
+		// _CONTAINERS_ROOTLESS_GID itself, so go.podman.io/storage correctly
+		// resolves rootless ($HOME-based) paths inside the namespace.
+		// CONTAINER_HOST must NOT be set on the outer `podman unshare`
+		// invocation itself - podman's CLI checks it before re-exec'ing into
+		// the namespace and refuses to run unshare "with the remote podman
+		// client" if it's present. Set it only for the nested `go test` via
+		// a second `env` invoked as the unshared command.
+		testCmd := "podman unshare env PATH=/usr/local/go/bin:$PATH CGO_ENABLED=1 XDG_RUNTIME_DIR=/run/user/1000 CONTAINER_HOST=unix:///run/user/1000/podman/podman.sock go test -v -tags=runtime,integration -coverprofile=coverage-runtime-integration.out -coverpkg=./... ./..."
 		runTestsAndFetch(cfg, c, vmName, vmRepo, localRepo, testCmd, "test-runtime-integration.log", "coverage-runtime-integration.out")
 	case "delete":
 		run(c, fmt.Sprintf("multipass delete -p %s >/dev/null 2>&1 || true", vmName))

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	nettypes "go.podman.io/common/libnetwork/types"
 	"go.podman.io/podman/v6/libpod/define"
 	"go.podman.io/podman/v6/pkg/specgen"
 )
@@ -111,6 +112,18 @@ func WithEnvs(envs map[string]string) ContainerOptions {
 		for k, v := range envs {
 			spec.Env[k] = v
 		}
+		return nil
+	}
+}
+
+// WithPortMapping publishes a container port on the host, e.g. for reaching
+// a container-backed service (such as a local registry) from the host side.
+func WithPortMapping(containerPort, hostPort uint16) ContainerOptions {
+	return func(spec *specgen.SpecGenerator) error {
+		spec.PortMappings = append(spec.PortMappings, nettypes.PortMapping{
+			ContainerPort: containerPort,
+			HostPort:      hostPort,
+		})
 		return nil
 	}
 }

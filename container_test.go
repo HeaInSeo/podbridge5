@@ -294,6 +294,28 @@ func cleanupContainer(t *testing.T, ctx context.Context, id string) {
 	}
 }
 
+func TestPodmanContainerRuntimeRemoveContainer(t *testing.T) {
+	ctx, err := NewConnectionLinux5(context.Background())
+	if err != nil {
+		t.Fatalf("NewConnectionLinux5() failed: %v", err)
+	}
+
+	_, id := createTestContainer(t, ctx, []string{"sleep", "60"})
+
+	runtime := podmanContainerRuntime{}
+	if err := runtime.RemoveContainer(ctx, id); err != nil {
+		t.Fatalf("RemoveContainer() failed: %v", err)
+	}
+
+	exists, err := containers.Exists(ctx, id, &containers.ExistsOptions{})
+	if err != nil {
+		t.Fatalf("containers.Exists() failed: %v", err)
+	}
+	if exists {
+		t.Fatalf("container %s should no longer exist after RemoveContainer()", id)
+	}
+}
+
 func TestStartContainer(t *testing.T) {
 	t.Parallel()
 

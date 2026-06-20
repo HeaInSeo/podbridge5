@@ -9,6 +9,7 @@ import (
 
 	"go.podman.io/buildah"
 	"go.podman.io/buildah/define"
+	imageTypes "go.podman.io/image/v5/types"
 )
 
 func TestDefaultImageBuildOptions(t *testing.T) {
@@ -322,6 +323,24 @@ func TestDefaultUserNamespaceBuildCapabilities(t *testing.T) {
 	}
 }
 
+func TestUserNamespaceSystemContext(t *testing.T) {
+	got := UserNamespaceSystemContext(UserNamespaceBuildConfig{})
+	if got.DockerInsecureSkipTLSVerify == imageTypes.OptionalBoolTrue {
+		t.Fatal("expected TLS verification left at default when InsecureSkipTLSVerify is unset")
+	}
+	if got.DockerPerHostCertDirPath != "" {
+		t.Fatalf("expected empty cert dir path, got %q", got.DockerPerHostCertDirPath)
+	}
+
+	got = UserNamespaceSystemContext(UserNamespaceBuildConfig{InsecureSkipTLSVerify: true, RegistryCertDirPath: "/certs"})
+	if got.DockerInsecureSkipTLSVerify != imageTypes.OptionalBoolTrue {
+		t.Fatalf("expected DockerInsecureSkipTLSVerify=true, got %v", got.DockerInsecureSkipTLSVerify)
+	}
+	if got.DockerPerHostCertDirPath != "/certs" {
+		t.Fatalf("expected cert dir path to be preserved, got %q", got.DockerPerHostCertDirPath)
+	}
+}
+
 func TestNormalizePushDestination(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -391,7 +410,7 @@ func TestNewBuilderOptionsRejectsEmptyBaseImage(t *testing.T) {
 func TestNewDefaultAddAndCopyOptions(t *testing.T) {
 	var hasher bytes.Buffer
 	got := newDefaultAddAndCopyOptions(&hasher)
-	if got.Chmod != "0o755" {
+	if got.Chmod != "755" {
 		t.Fatalf("unexpected chmod: %q", got.Chmod)
 	}
 	if got.Chown != "0:0" {

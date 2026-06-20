@@ -321,6 +321,60 @@ func TestWriteFolderToVolume_ModeOverwrite(t *testing.T) {
 	// 필요하면 dir1 에 “gone.txt” 추가 후 dir2 에서는 생략해 검사 가능.
 }
 
+func TestReadDataFromVolume(t *testing.T) {
+	ctx, err := NewConnectionLinux5(context.Background())
+	if err != nil {
+		t.Fatalf("NewConnectionLinux5() failed: %v", err)
+	}
+
+	volumeName := "test-rdfv-" + uuid.New().String()
+	mountPath := "/data"
+	ensureVolumeDeleted(t, ctx, volumeName)
+	defer ensureVolumeDeleted(t, ctx, volumeName)
+
+	hostDir := t.TempDir()
+	const want = "Hello, ReadDataFromVolume!"
+	if err := os.WriteFile(filepath.Join(hostDir, "hello.txt"), []byte(want), 0o644); err != nil {
+		t.Fatalf("seed write: %v", err)
+	}
+
+	if err := WriteFolderToVolume(ctx, volumeName, mountPath, hostDir, ModeUpdate); err != nil {
+		t.Fatalf("WriteFolderToVolume failed: %v", err)
+	}
+
+	got, err := ReadDataFromVolume(ctx, volumeName, mountPath, "hello.txt")
+	if err != nil {
+		t.Fatalf("ReadDataFromVolume failed: %v", err)
+	}
+	if got != want {
+		t.Fatalf("ReadDataFromVolume content mismatch: got %q, want %q", got, want)
+	}
+}
+
+func TestReadDataFromVolume_FileNotFound(t *testing.T) {
+	ctx, err := NewConnectionLinux5(context.Background())
+	if err != nil {
+		t.Fatalf("NewConnectionLinux5() failed: %v", err)
+	}
+
+	volumeName := "test-rdfv-missing-" + uuid.New().String()
+	mountPath := "/data"
+	ensureVolumeDeleted(t, ctx, volumeName)
+	defer ensureVolumeDeleted(t, ctx, volumeName)
+
+	hostDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(hostDir, "present.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("seed write: %v", err)
+	}
+	if err := WriteFolderToVolume(ctx, volumeName, mountPath, hostDir, ModeUpdate); err != nil {
+		t.Fatalf("WriteFolderToVolume failed: %v", err)
+	}
+
+	if _, err := ReadDataFromVolume(ctx, volumeName, mountPath, "missing.txt"); err == nil {
+		t.Fatal("expected error reading a non-existent file from volume, got nil")
+	}
+}
+
 var (
 	errAlways    = errors.New("always fails")
 	errTransient = errors.New("transient fails then success")

@@ -89,10 +89,20 @@ test-runtime: go-version-check runtime-env-check runtime-host-check
 	$(GO) test -v -tags "$(TEST_TAGS_RUNTIME)" ./...
 
 # Runtime-sensitive integration tests.
+#
+# Plain `unshare -r` only maps the calling uid to 0 inside a fresh user
+# namespace - it doesn't grant the full subuid/subgid range, so extracting a
+# layer that chowns into a wider GID (e.g. /etc/shadow at gid 42) fails with
+# "potentially insufficient UIDs or GIDs available in user namespace".
+# `podman unshare` builds the namespace via newuidmap/newgidmap using the
+# host's configured subuid/subgid ranges (see /etc/subuid, /etc/subgid) and
+# also exports _CONTAINERS_USERNS_CONFIGURED/_CONTAINERS_ROOTLESS_UID/
+# _CONTAINERS_ROOTLESS_GID itself, so go.podman.io/storage correctly resolves
+# rootless ($HOME-based) storage paths inside the namespace.
 test-runtime-integration: go-version-check runtime-env-check runtime-host-check runtime-integration-host-check
 	@echo "[test-runtime-integration] tags: $(TEST_TAGS_RUNTIME_INTEGRATION)"
-	@echo "[test-runtime-integration] running integration tests with unshare"
-	@unshare -r -m $(GO) test -v -tags "$(TEST_TAGS_RUNTIME_INTEGRATION)" ./...
+	@echo "[test-runtime-integration] running integration tests with podman unshare"
+	@podman unshare $(GO) test -v -tags "$(TEST_TAGS_RUNTIME_INTEGRATION)" ./...
 
 go-version-check:
 	@command -v $(GO) >/dev/null 2>&1 || { echo "missing: $(GO)" >&2; exit 1; }
@@ -157,8 +167,8 @@ runtime-host-check:
 	fi
 
 runtime-integration-host-check:
-	@command -v unshare >/dev/null 2>&1 || { echo "missing: unshare" >&2; exit 1; }
-	@echo "[runtime-integration-host-check] unshare is available"
+	@command -v podman >/dev/null 2>&1 || { echo "missing: podman" >&2; exit 1; }
+	@echo "[runtime-integration-host-check] podman unshare is available"
 
 check-remote-auth:
 	@if [ -n "$(REMOTE_PASS)" ]; then \
