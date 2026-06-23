@@ -50,6 +50,19 @@ func TestDefaultUserNamespaceStoreOptions(t *testing.T) {
 	}
 }
 
+func TestNewUserNamespaceBuildConfig(t *testing.T) {
+	got := NewUserNamespaceBuildConfig("registry.example.com/team/tool:latest", StorageNativeOverlay)
+	if got.OutputRef != "registry.example.com/team/tool:latest" {
+		t.Fatalf("unexpected output ref: %q", got.OutputRef)
+	}
+	if got.StorageMode != StorageNativeOverlay {
+		t.Fatalf("unexpected storage mode: %q", got.StorageMode)
+	}
+	if got.Isolation != BuildIsolationOCI {
+		t.Fatalf("unexpected isolation: %q", got.Isolation)
+	}
+}
+
 func TestStoreOptions(t *testing.T) {
 	opts := DefaultUserNamespaceStoreOptions()
 	for _, applyOpt := range []StoreOption{
@@ -149,6 +162,22 @@ func TestUserNamespaceImageBuildOptions(t *testing.T) {
 	}
 	if got.CacheFrom[0].String() != "registry.example.com/team/tool-cache:latest" {
 		t.Fatalf("unexpected cache ref: %q", got.CacheFrom[0].String())
+	}
+	if got.ConfigureNetwork != define.NetworkDefault {
+		t.Fatalf("unexpected network configuration: %v", got.ConfigureNetwork)
+	}
+}
+
+func TestUserNamespaceImageBuildOptionsWithNetworkDisabled(t *testing.T) {
+	got, err := UserNamespaceImageBuildOptions(UserNamespaceBuildConfig{
+		OutputRef:            "registry.example.com/team/tool:latest",
+		NetworkConfiguration: define.NetworkDisabled,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.ConfigureNetwork != define.NetworkDisabled {
+		t.Fatalf("unexpected network configuration: %v", got.ConfigureNetwork)
 	}
 }
 

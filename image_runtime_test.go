@@ -365,6 +365,24 @@ func TestAnnotateBuildahExecutionError(t *testing.T) {
 	}
 }
 
+func TestClassifyBuildahExecutionError(t *testing.T) {
+	tests := []struct {
+		err  error
+		want BuildahExecutionErrorKind
+	}{
+		{err: nil, want: BuildahExecutionErrorUnknown},
+		{err: errors.New("unshare(CLONE_NEWUSER): operation not permitted"), want: BuildahExecutionErrorUserNamespace},
+		{err: errors.New("write setgroups: permission denied"), want: BuildahExecutionErrorSupplementaryGroup},
+		{err: errors.New("set file capabilities: operation not permitted"), want: BuildahExecutionErrorFileCapabilities},
+		{err: errors.New("unrelated failure"), want: BuildahExecutionErrorUnknown},
+	}
+	for _, tc := range tests {
+		if got := ClassifyBuildahExecutionError(tc.err); got != tc.want {
+			t.Fatalf("ClassifyBuildahExecutionError(%v) = %q, want %q", tc.err, got, tc.want)
+		}
+	}
+}
+
 func TestPushImageWithRuntime_PropagatesPushError(t *testing.T) {
 	runtime := &fakeImageBuildRuntime{pushErr: errors.New("push failed")}
 	_, err := pushImageWithRuntime(context.Background(), runtime, nil, "example.com/demo:latest", "example.com/demo:latest")

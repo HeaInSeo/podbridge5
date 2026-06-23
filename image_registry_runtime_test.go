@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.podman.io/buildah/define"
 	imageTypes "go.podman.io/image/v5/types"
 )
 
@@ -90,13 +91,24 @@ func TestBuildAndPushUserNamespaceRuntime(t *testing.T) {
 	destination := fmt.Sprintf("localhost:%d/podbridge5-test-buildpush-userns:latest", hostPort)
 	storageRoot := t.TempDir()
 	cfg := UserNamespaceBuildConfig{
-		OutputRef:             destination,
-		StorageMode:           StorageVFS,
-		RunRoot:               storageRoot + "/run",
-		GraphRoot:             storageRoot + "/graph",
+		OutputRef: destination,
+		// Keep both choices explicit. An empty Isolation intentionally retains
+		// the legacy chroot default, which exercises a different execution path.
+		Isolation:   BuildIsolationOCI,
+		StorageMode: StorageNativeOverlay,
+		RunRoot:     storageRoot + "/run",
+		GraphRoot:   storageRoot + "/graph",
+		// The lab's rootless netavark cannot set up a build-time network
+		// namespace (setns: Operation not permitted) under user namespaces;
+		// see https://github.com/HeaInSeo/podbridge5/issues/1. RUN steps here
+		// don't need network access, so disable it rather than skip the
+		// OCI-isolation execution path entirely.
+		NetworkConfiguration:  define.NetworkDisabled,
 		InsecureSkipTLSVerify: true,
 	}
-	const dockerfileContent = "FROM docker.io/library/alpine:latest\nCMD [\"true\"]\n"
+	// RUN is required here: it verifies the OCI execution path rather than
+	// merely creating an image from config-only Dockerfile instructions.
+	const dockerfileContent = "FROM docker.io/library/alpine:latest\nRUN test -r /etc/os-release\nCMD [\"true\"]\n"
 
 	var imageID, digestStr string
 	if err := waitForRegistry(context.Background(), func() error {

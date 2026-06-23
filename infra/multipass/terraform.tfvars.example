@@ -1,0 +1,8 @@
+# Copy to terraform.tfvars only when deviating from the shared remote host.
+# terraform.tfvars is intentionally ignored by Git.
+# remote_host = "100.123.80.48"
+# remote_user = "seoy"
+# vm_name     = "podbridge5-dev"
+# cpus        = 2
+# memory      = "4G"
+# disk        = "20G"
