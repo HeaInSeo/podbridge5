@@ -216,8 +216,8 @@ func NewUserNamespaceStore(opts ...StoreOption) (storage.Store, error) {
 	return buildStore, nil
 }
 
-func NewUserNamespaceStoreWithConfig(config UserNamespaceBuildConfig) (storage.Store, error) {
-	buildStoreOptions, err := UserNamespaceStoreOptions(config)
+func NewUserNamespaceStoreWithConfig(buildConfig UserNamespaceBuildConfig) (storage.Store, error) {
+	buildStoreOptions, err := UserNamespaceStoreOptions(buildConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -421,8 +421,8 @@ func BuildAndPushDockerfileContent(ctx context.Context, store storage.Store, doc
 	return buildAndPushDockerfileContentWithRuntime(ctx, realImageBuildRuntime{}, store, dockerfileContent, outputRef)
 }
 
-func BuildAndPushUserNamespace(ctx context.Context, config UserNamespaceBuildConfig, dockerfileContent string) (imageID, digestStr string, err error) {
-	return buildAndPushUserNamespaceWithRuntime(ctx, realImageBuildRuntime{}, NewUserNamespaceStoreWithConfig, shutdown, config, dockerfileContent)
+func BuildAndPushUserNamespace(ctx context.Context, buildConfig UserNamespaceBuildConfig, dockerfileContent string) (imageID, digestStr string, err error) {
+	return buildAndPushUserNamespaceWithRuntime(ctx, realImageBuildRuntime{}, NewUserNamespaceStoreWithConfig, shutdown, buildConfig, dockerfileContent)
 }
 
 // newBuilder creates a new builder using the NewBuilder function with default options.

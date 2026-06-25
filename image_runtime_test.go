@@ -98,7 +98,8 @@ func TestBuildDockerfileContentWithOptionsRuntime(t *testing.T) {
 }
 
 func TestBuildDockerfileContentWithOptionsRuntimeRejectsNilContext(t *testing.T) {
-	_, _, err := buildDockerfileContentWithOptionsRuntime(nil, &fakeImageBuildRuntime{}, nil, "FROM scratch\n", DefaultImageBuildOptions("example.com/demo:latest"))
+	var nilContext context.Context
+	_, _, err := buildDockerfileContentWithOptionsRuntime(nilContext, &fakeImageBuildRuntime{}, nil, "FROM scratch\n", DefaultImageBuildOptions("example.com/demo:latest"))
 	if err == nil || err.Error() != "ctx must not be nil" {
 		t.Fatalf("unexpected error: %v", err)
 	}

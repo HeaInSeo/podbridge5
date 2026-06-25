@@ -170,7 +170,8 @@ func TestStartContainerWithRuntime_PropagatesStartError(t *testing.T) {
 
 func TestStartContainerWithRuntimeRejectsInvalidInput(t *testing.T) {
 	runtime := &fakeContainerRuntime{}
-	if _, err := startContainerWithRuntime(nil, runtime, &specgen.SpecGenerator{}); err == nil {
+	var nilContext context.Context
+	if _, err := startContainerWithRuntime(nilContext, runtime, &specgen.SpecGenerator{}); err == nil {
 		t.Fatal("expected nil context error")
 	}
 	if _, err := startContainerWithRuntime(context.Background(), runtime, nil); err == nil {

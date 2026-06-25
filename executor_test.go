@@ -47,8 +47,8 @@ func TestGenerateExecutorFailPathsAndIdempotency(t *testing.T) {
 	if firstFile == nil || firstPath == nil {
 		t.Fatalf("expected first call to create and open executor")
 	}
-	if err := firstFile.Close(); err != nil {
-		t.Fatalf("close first executor: %v", err)
+	if closeErr := firstFile.Close(); closeErr != nil {
+		t.Fatalf("close first executor: %v", closeErr)
 	}
 
 	secondFile, secondPath, err := GenerateExecutor(dir, "executor.sh", "./user_script.sh")
