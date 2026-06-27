@@ -1,6 +1,9 @@
 package podbridge5
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -17,6 +20,35 @@ func TestInternalizeImageName(t *testing.T) {
 		t.Errorf("Expected ImageName to be %q, got %q", expectedImageName, correctImageName)
 	}
 	Log.Printf("Expected ImageName to be %q, got %q", expectedImageName, correctImageName)
+}
+
+func TestNewConfigFromFileErrorPaths(t *testing.T) {
+	if _, err := NewConfigFromFile(""); err == nil {
+		t.Fatal("expected empty path error")
+	}
+
+	dir := t.TempDir()
+	if _, err := NewConfigFromFile(filepath.Join(dir, "missing.json")); err == nil {
+		t.Fatal("expected missing file error")
+	}
+
+	badJSON := filepath.Join(dir, "bad.json")
+	if err := os.WriteFile(badJSON, []byte("{not json}"), 0o644); err != nil {
+		t.Fatalf("write bad json: %v", err)
+	}
+	if _, err := NewConfigFromFile(badJSON); err == nil {
+		t.Fatal("expected JSON decode error")
+	}
+
+	good := filepath.Join(dir, "good.json")
+	cfg := BuildConfig{}
+	data, _ := json.Marshal(cfg)
+	if err := os.WriteFile(good, data, 0o644); err != nil {
+		t.Fatalf("write good json: %v", err)
+	}
+	if _, err := NewConfigFromFile(good); err != nil {
+		t.Fatalf("unexpected error on valid config: %v", err)
+	}
 }
 
 func TestSetSourceImageNameAndImageName(t *testing.T) {

@@ -109,6 +109,58 @@ func TestProcessScriptRejectsInvalidInput(t *testing.T) {
 	}
 }
 
+func TestProcessScriptCreatesDirectoryIfMissing(t *testing.T) {
+	parent := t.TempDir()
+	newDir := filepath.Join(parent, "sub", "scripts")
+
+	shPath, err := ProcessScript("#!/bin/bash\necho ok\n", newDir)
+	if err != nil {
+		t.Fatalf("ProcessScript with missing directory failed: %v", err)
+	}
+	if _, statErr := os.Stat(shPath); statErr != nil {
+		t.Fatalf("expected script file at %s: %v", shPath, statErr)
+	}
+	if _, statErr := os.Stat(filepath.Join(newDir, "user_script.txt")); statErr != nil {
+		t.Fatal("expected txt backup file to be written")
+	}
+}
+
+func TestGenerateExecutorOverwritesChangedContent(t *testing.T) {
+	dir := t.TempDir()
+
+	first, firstPath, err := GenerateExecutor(dir, "executor.sh", "./original.sh")
+	if err != nil || first == nil {
+		t.Fatalf("first GenerateExecutor failed: err=%v file=%v", err, first)
+	}
+	first.Close()
+
+	second, secondPath, err := GenerateExecutor(dir, "executor.sh", "./changed.sh")
+	if err != nil {
+		t.Fatalf("second GenerateExecutor (different content) failed: %v", err)
+	}
+	if second == nil {
+		t.Fatal("expected new file handle when content changed, got nil")
+	}
+	second.Close()
+	if secondPath == nil || *secondPath != *firstPath {
+		t.Fatalf("path mismatch: first=%v second=%v", firstPath, secondPath)
+	}
+}
+
+func TestGenerateExecutorCreatesDirectoryIfMissing(t *testing.T) {
+	parent := t.TempDir()
+	newDir := filepath.Join(parent, "sub", "dir")
+
+	f, p, err := GenerateExecutor(newDir, "executor.sh", "./user_script.sh")
+	if err != nil {
+		t.Fatalf("expected directory to be created automatically: %v", err)
+	}
+	if f == nil || p == nil {
+		t.Fatal("expected valid file and path")
+	}
+	f.Close()
+}
+
 func TestCompareFiles(t *testing.T) {
 	// 테스트 경로 설정
 	testPath := "./test-scripts"
