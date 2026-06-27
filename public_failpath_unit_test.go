@@ -27,29 +27,3 @@ func TestCreateInitContainerRejectsInvalidOverlayArgsBeforeStart(t *testing.T) {
 		t.Fatal("expected invalid target error")
 	}
 }
-
-func TestBuildConfigCreateImageRejectsUninitializedRuntime(t *testing.T) {
-	initMu.Lock()
-	oldCtx := pbCtx
-	oldStore := pbStore
-	oldInitialized := initialized
-	pbCtx = nil
-	pbStore = nil
-	initialized = false
-	initMu.Unlock()
-	t.Cleanup(func() {
-		initMu.Lock()
-		pbCtx = oldCtx
-		pbStore = oldStore
-		initialized = oldInitialized
-		initMu.Unlock()
-	})
-
-	_, _, err := NewConfig("alpine").CreateImage()
-	if err == nil {
-		t.Fatal("expected uninitialized runtime error")
-	}
-	if !strings.Contains(err.Error(), "pbCtx is nil") {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}

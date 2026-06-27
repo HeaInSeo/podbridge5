@@ -76,6 +76,9 @@ Incompatible Dockerfiles should later be routed by NodeVault to an isolated priv
 ## Changelog
 
 - `v0.1.6` — added the `NewUserNamespaceBuildConfig()` constructor and split out `ClassifyBuildahExecutionError()`; added a `NetworkConfiguration` option on `UserNamespaceBuildConfig`. Fixed a bug found via remote VM validation: rootless netavark couldn't set up a network namespace during `RUN` steps under OCI isolation (`setns: Operation not permitted`); worked around with `NetworkConfiguration: NetworkDisabled`. Added an OpenTofu module under `infra/multipass` to manage the persistent validation VM (`podbridge5-dev`)
+- `v0.1.5` — expanded runtime/integration test coverage (store, builder, registry push/pull, user-namespace build, rootless init path). Bugs found and fixed: removed hardcoded `runc` (VM only has `crun`), fixed build-layer leak from missing `RemoveIntermediateCtrs`, removed unnecessary netavark network setup, corrected `Chmod` default (`"0o755"` → `"755"`), adjusted volume-cleanup timeout. Replaced `unshare -r` with `podman unshare` in the remote VM test harness to apply the full subuid/subgid range and export rootless env vars correctly. Combined test coverage reached **80.5%**
+- `v0.1.4` — removed fuse-overlayfs fallback from `MountOverlay` (native rootless overlay only), clarified `CreateContainer` create-if-absent contract and cleaned up related tests, fixed remote VM runtime test pipeline (socket permissions, output-stream stalls). Combined test coverage reached **70%+**
+- `v0.1.3` — fixed golangci-lint wrapcheck/govet/gocritic findings; added changelog section to README
 - `v0.1.2` — updated Podman/Buildah dependencies, fixed remote VM user namespace integration, added user namespace Buildah defaults
 - `v0.1.1` — replaced `seoyhaein/utils` with `HeaInSeo/utils v0.0.7` (no API changes)
 
