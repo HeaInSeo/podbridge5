@@ -8,13 +8,12 @@ name: VM Runtime Tests
 # make vm-test-runtime은 REMOTE_HOST=127.0.0.1로 자기 자신에게 SSH 접속해
 # multipass로 podbridge5-dev VM을 생성/동기화/테스트/삭제한다.
 #
-# 선택 GitHub Secrets:
+# 필수 GitHub Secrets:
 #   VM_SSH_PRIVATE_KEY  — 원격 장비 → localhost SSH용 키 (ssh-copy-id로 등록)
+#
+# 선택 GitHub Secrets:
 #   VM_REMOTE_USER      — SSH 사용자 (기본 seoy)
 #   VM_REMOTE_PORT      — SSH 포트 (기본 22)
-#
-# VM_SSH_PRIVATE_KEY가 없으면 self-hosted runner의 기본 SSH key
-# (~/.ssh/id_ed25519 또는 ~/.ssh/id_rsa)를 사용한다.
 # ─────────────────────────────────────────────────────────────────
 
 on:
@@ -61,10 +60,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate VM SSH key secret
+        run: |
+          if [ -z "$VM_SSH_PRIVATE_KEY" ]; then
+            echo "VM_SSH_PRIVATE_KEY secret is required for VM runtime tests." >&2
+            exit 1
+          fi
+
       # SSH agent 설정 — Makefile check-remote-auth가 SSH_AUTH_SOCK을 감지
-      # secret이 없으면 Makefile/hack/remotevm이 runner의 기본 SSH key 파일을 사용
+      # 원격 장비에서 자기 자신(127.0.0.1)으로 SSH 접속하므로 전용 localhost 키 필요
       - name: Configure SSH agent
-        if: ${{ env.VM_SSH_PRIVATE_KEY != '' }}
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ env.VM_SSH_PRIVATE_KEY }}
