@@ -70,8 +70,7 @@ func WithIsolation(isolation define.Isolation) BuilderOption {
 	}
 }
 
-// WithCommonBuildOptions sets the common build options such as CPU and memory limits. 함수 수정: 에러 발생 시 이를 반환
-// TODO 확인하자.
+// WithCommonBuildOptions sets the common build options such as CPU and memory limits.
 func WithCommonBuildOptions(options *buildah.CommonBuildOptions) BuilderOption {
 	return func(opts *buildah.BuilderOptions) error {
 		if options != nil {
@@ -83,8 +82,7 @@ func WithCommonBuildOptions(options *buildah.CommonBuildOptions) BuilderOption {
 	}
 }
 
-// WithSystemContext sets the system context for the builder options. 함수 수정: 에러 발생 시 이를 반환
-// TODO 확인하자.
+// WithSystemContext sets the system context for the builder options.
 func WithSystemContext(sysCtx *imageTypes.SystemContext) BuilderOption {
 	return func(opts *buildah.BuilderOptions) error {
 		if sysCtx != nil {
@@ -342,7 +340,6 @@ func NewAddAndCopyOptions(opts ...func(*buildah.AddAndCopyOptions)) buildah.AddA
 // ------------------------------------------------------
 // Image Build Helper Functions
 // ------------------------------------------------------
-// TODO dockerfilePath 관점에서 ContextDirectory 생각해봐야 한다. 실제 caleb 적용시 수정될 수 있음. (중요)
 // buildImageFromDockerfile builds an image from the provided Dockerfile
 func buildImageFromDockerfile(ctx context.Context, dockerfilePath string) (string, error) {
 	// Define build options
@@ -426,7 +423,6 @@ func BuildAndPushUserNamespace(ctx context.Context, buildConfig UserNamespaceBui
 }
 
 // newBuilder creates a new builder using the NewBuilder function with default options.
-// TODO 좀더 study 필요. 옵션들에 대해서.
 func newBuilder(ctx context.Context, store storage.Store, idName string) (*buildah.Builder, error) {
 	return newBuilderWithRuntime(ctx, realImageBuilderFactoryRuntime{}, store, idName)
 }

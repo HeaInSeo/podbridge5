@@ -100,7 +100,6 @@ type VolumeConfig struct {
 }
 
 // NewConfig creates a new BuildConfig using the provided sourceImageName.
-// TODO 리소스 설정하는 부분은 수정할 필요 있음.
 func NewConfig(sourceImageName string) *BuildConfig {
 	internalImgName := internalizeImageName(sourceImageName)
 	return &BuildConfig{
@@ -363,8 +362,6 @@ func (config *BuildConfig) CreateImage(ctx context.Context, store storage.Store)
 	return builder, imageID, nil
 }
 
-// TODO  만약 사용자가 os 만 선택한 경우도 생각해야 한다.
-
 // CreateImageWithDockerfile builds an image from a Dockerfile using the BuildConfig.
 func (config *BuildConfig) CreateImageWithDockerfile(ctx context.Context, store storage.Store) (*buildah.Builder, string, error) {
 	// Dockerfile 경로를 기반으로 이미지를 빌드
@@ -385,8 +382,6 @@ func (config *BuildConfig) CreateImageWithDockerfile(ctx context.Context, store 
 
 	return builder, imageID, nil
 }
-
-// TODO 생각하기 ContainerConfig 로 할 필요가 있을까??
 
 // SetupContainer sets up the container environment based on ContainerConfig.
 func (c *ContainerConfig) SetupContainer(builder *buildah.Builder) error {
