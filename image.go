@@ -441,6 +441,24 @@ func saveImage(ctx context.Context, path, imageName, imageID string, compress bo
 	return saveImageWithRuntime(ctx, realImageExportRuntime{}, path, imageName, imageID, compress)
 }
 
+// SaveImage exports the image identified by imageID to a tar archive (or
+// tar.gz, if compress is true) under path. The archive's exact filename is
+// reported by ImageArchivePath. This lets a caller inspect an image's file
+// list — e.g. checking for specific binaries — by reading the resulting
+// archive directly, without mounting the image or executing anything
+// inside it.
+func SaveImage(ctx context.Context, path, imageName, imageID string, compress bool) error {
+	return saveImage(ctx, path, imageName, imageID, compress)
+}
+
+// ImageArchivePath returns the file path SaveImage writes to for the given
+// basePath/imageName/compress combination, without performing the export.
+// Callers that need to open the archive after SaveImage succeeds should use
+// this instead of reconstructing the naming convention themselves.
+func ImageArchivePath(basePath, imageName string, compress bool) string {
+	return imageArchivePath(basePath, imageName, compress)
+}
+
 // internalizeImageName 은 입력 이미지 이름에서 태그 앞에 "-internal"을 삽입하여 내부 전용 이미지 이름을 생성
 // 예: "docker.io/library/alpine:latest" -> "docker.io/library/alpine-internal:latest"
 func internalizeImageName(imageName string) string {
