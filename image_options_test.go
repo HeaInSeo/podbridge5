@@ -168,6 +168,34 @@ func TestUserNamespaceImageBuildOptions(t *testing.T) {
 	}
 }
 
+func TestUserNamespaceImageBuildOptionsWithBuildLog(t *testing.T) {
+	var buf bytes.Buffer
+	got, err := UserNamespaceImageBuildOptions(UserNamespaceBuildConfig{
+		OutputRef: "registry.example.com/team/tool:latest",
+		BuildLog:  &buf,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.Out != &buf {
+		t.Fatalf("expected Out to be the provided BuildLog writer, got %v", got.Out)
+	}
+}
+
+func TestUserNamespaceImageBuildOptionsWithoutBuildLog_OutUnset(t *testing.T) {
+	// Nil BuildLog must leave Out unset (nil) so Buildah's own default
+	// (os.Stdout) applies — preserving prior behavior for existing callers.
+	got, err := UserNamespaceImageBuildOptions(UserNamespaceBuildConfig{
+		OutputRef: "registry.example.com/team/tool:latest",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.Out != nil {
+		t.Fatalf("expected Out to remain nil when BuildLog is not set, got %v", got.Out)
+	}
+}
+
 func TestUserNamespaceImageBuildOptionsWithNetworkDisabled(t *testing.T) {
 	got, err := UserNamespaceImageBuildOptions(UserNamespaceBuildConfig{
 		OutputRef:            "registry.example.com/team/tool:latest",
