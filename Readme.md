@@ -76,11 +76,13 @@ overlay는 목표 기본값으로 유지하되, NodeVault 전환 시 node filesy
 
 ## 변경 이력
 
+- `v0.1.9` — `UserNamespaceBuildConfig`에 `BuildLog`(`io.Writer`) 필드 추가: Buildah의 빌드 진행 출력을 기존 로깅에 더해 캡처할 수 있게 함(`nil`이면 기존 동작 유지). Go/GitHub Actions 대상 CodeQL advanced-setup 워크플로 추가
 - `v0.1.8` — `SaveImage`/`ImageArchivePath` 공개 API 추가(`saveImage`/`imageArchivePath`의 얇은 공개 래퍼). 빌드된 이미지를 tar/tar.gz로 export해 파일 목록을 exec 없이 검사할 수 있게 함(issue #2, NodeVault의 최종 이미지 risky-tool 스캔용)
 - `v0.1.7` — lint 수정(importShadow, nil context), `NewConfigFromFile`·`GenerateExecutor`·`ProcessScript` 단위 테스트 보강. `RunContainerWithStats` 삭제(삭제 예정 코드). `BuildConfig.CreateImage()` 시그니처 변경: 전역 상태(`pbCtx`/`pbStore`) 의존 제거, `(ctx context.Context, store storage.Store)` 명시 파라미터로 전환(`CreateImageWithDockerfile`과 동일한 패턴). TODO 주석 정리, GitHub Actions VM 런타임 테스트 워크플로 SSH 시크릿 설정 개선
 - `v0.1.6` — `NewUserNamespaceBuildConfig()` 생성자와 `ClassifyBuildahExecutionError()` 분리 추가, `UserNamespaceBuildConfig`에 `NetworkConfiguration` 옵션 추가. 원격 검증 VM에서 발견한 버그 수정: rootless netavark가 OCI isolation 빌드의 `RUN` 단계에서 네트워크 네임스페이스를 설정하지 못하는 문제(`setns: Operation not permitted`)를 `NetworkConfiguration: NetworkDisabled`로 우회. `infra/multipass`에 persistent 검증 VM(`podbridge5-dev`) 관리용 OpenTofu 모듈 추가
 - `v0.1.5` — 실제 런타임/통합 테스트 커버리지 확대(store, builder, registry push/pull, user namespace 빌드, rootless init 경로). 이 과정에서 발견한 버그 수정: `runc` 하드코딩 제거(VM은 `crun`만 설치됨), `RemoveIntermediateCtrs` 미설정으로 인한 빌드 레이어 누수, 불필요한 netavark 네트워크 설정, 잘못된 `Chmod` 기본값(`"0o755"` → `"755"`), 볼륨 정리 타임아웃 조정. remote VM 통합 테스트 하니스를 `unshare -r`에서 `podman unshare`로 교체(subuid/subgid 전체 범위 및 rootless 환경변수를 올바르게 적용), 합산 테스트 커버리지 80%+ 달성
 - `v0.1.4` — `MountOverlay`의 fuse-overlayfs 폴백 제거(네이티브 rootless overlay만 시도), `CreateContainer`의 create-if-absent 계약 명시 및 관련 테스트 정리, remote VM 런타임 테스트 파이프라인 수정(소켓 권한, 출력 스트리밍 끊김), 합산 테스트 커버리지 70%+ 달성
+- `v0.1.3` — golangci-lint wrapcheck/govet/gocritic 지적사항 수정, README에 변경 이력 섹션 추가
 - `v0.1.2` — Podman/Buildah 의존성 업데이트, remote VM user namespace 통합 수정, user namespace Buildah 기본값 추가
 - `v0.1.1` — `seoyhaein/utils`를 `HeaInSeo/utils v0.0.7`로 교체 (API 변경 없음)
 
