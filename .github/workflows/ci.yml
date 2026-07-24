@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  BUILD_TAGS: "exclude_graphdriver_btrfs containers_image_openpgp exclude_graphdriver_devicemapper"
+  BUILD_TAGS: "exclude_graphdriver_btrfs exclude_graphdriver_devicemapper"
   GO_VERSION_FILE: go.mod
 
 jobs:
@@ -182,10 +182,7 @@ jobs:
             echo "Unsupported package manager" >&2; exit 1
           fi
 
-      # continue-on-error: Go 표준 라이브러리 CVE(1.25.5→1.25.9 필요)는
-      # Go 버전 업그레이드 없이는 해소 불가. 결과는 Annotations에 표시됨.
       - name: govulncheck
-        continue-on-error: true
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck -tags "${{ env.BUILD_TAGS }}" ./...

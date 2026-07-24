@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      BUILD_TAGS: "exclude_graphdriver_btrfs containers_image_openpgp exclude_graphdriver_devicemapper"
+      BUILD_TAGS: "exclude_graphdriver_btrfs exclude_graphdriver_devicemapper"
     strategy:
       fail-fast: false
       matrix:
