@@ -7,7 +7,6 @@ run:
   # unit 빌드 태그와 동일하게 CGo 네이티브 드라이버를 제외해 CI 환경에서도 컴파일 가능
   build-tags:
     - exclude_graphdriver_btrfs
-    - containers_image_openpgp
     - exclude_graphdriver_devicemapper
 
 linters:

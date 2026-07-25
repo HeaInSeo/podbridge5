@@ -34,7 +34,7 @@ REMOTE_VM_RUN = \
 	vm-run-runtime-integration vm-delete-runtime vm-test-runtime \
 	vm-test-runtime-integration coverage-merge lint lint-fix
 
-TEST_TAGS_BASE ?= exclude_graphdriver_btrfs containers_image_openpgp exclude_graphdriver_devicemapper
+TEST_TAGS_BASE ?= exclude_graphdriver_btrfs exclude_graphdriver_devicemapper
 TEST_TAGS_RUNTIME ?= $(TEST_TAGS_BASE) runtime
 TEST_TAGS_RUNTIME_INTEGRATION ?= $(TEST_TAGS_BASE) runtime integration
 
