@@ -1,6 +1,6 @@
 module github.com/HeaInSeo/podbridge5
 
-go 1.25.6
+go 1.25.12
 
 require (
 	github.com/HeaInSeo/utils v0.0.7
