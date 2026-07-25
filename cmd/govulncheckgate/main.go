@@ -79,7 +79,7 @@ func run(args []string, stdin io.Reader, stdout io.Writer) error {
 	exceptionsPath := fs.String("exceptions", "security/govulncheck-exceptions.yaml", "path to the exceptions YAML file")
 	inputPath := fs.String("input", "-", "path to govulncheck -format json output ('-' for stdin)")
 	if err := fs.Parse(args); err != nil {
-		return err
+		return fmt.Errorf("parse flags: %w", err)
 	}
 
 	exFile, err := loadExceptions(*exceptionsPath)
@@ -139,7 +139,7 @@ func parseReachableFindings(r io.Reader) (count int, reachable map[string][]occu
 			if decErr == io.EOF {
 				break
 			}
-			return count, nil, decErr
+			return count, nil, fmt.Errorf("decode govulncheck message: %w", decErr)
 		}
 		count++
 		if msg.Finding == nil || len(msg.Finding.Trace) == 0 {
@@ -169,19 +169,26 @@ func evaluate(exFile exceptionsFile, reachable map[string][]occurrence, stdout i
 	const unusedExceptionFmt = "WARNING: exception %s (%s / %s) is no longer detected as reachable" +
 		" — consider removing it (owner: %s, tracking: %s)\n"
 	for i, exc := range exFile.Exceptions {
-		if !usedException[i] {
-			_, _ = fmt.Fprintf(stdout, unusedExceptionFmt, exc.ID, exc.Module, exc.Package, exc.Owner, exc.TrackingIssue)
+		if usedException[i] {
+			continue
+		}
+		if _, err := fmt.Fprintf(stdout, unusedExceptionFmt, exc.ID, exc.Module, exc.Package, exc.Owner, exc.TrackingIssue); err != nil {
+			return fmt.Errorf("write unused-exception warning: %w", err)
 		}
 	}
 
 	if len(failures) > 0 {
 		for _, f := range failures {
-			_, _ = fmt.Fprintln(stdout, "FAIL:", f)
+			if _, err := fmt.Fprintln(stdout, "FAIL:", f); err != nil {
+				return fmt.Errorf("write failure report: %w", err)
+			}
 		}
 		return fmt.Errorf("%d unapproved govulncheck finding(s)", len(failures))
 	}
 
-	_, _ = fmt.Fprintln(stdout, "govulncheck gate: all reachable findings are covered by non-expired exceptions")
+	if _, err := fmt.Fprintln(stdout, "govulncheck gate: all reachable findings are covered by non-expired exceptions"); err != nil {
+		return fmt.Errorf("write success report: %w", err)
+	}
 	return nil
 }
 
