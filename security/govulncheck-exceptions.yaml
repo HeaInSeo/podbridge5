@@ -24,3 +24,30 @@ exceptions:
     owner: "HeaInSeo"
     expires: "2026-10-16"
     tracking_issue: "https://github.com/HeaInSeo/podbridge5/issues/4"
+
+  - id: GO-2026-5761
+    module: github.com/opencontainers/runc
+    package: github.com/opencontainers/runc
+    reason: >-
+      Fixed in v1.4.3, but bumping pulls a ~30-module transitive cascade
+      (cloud KMS providers, sigstore signing infra, azure/aws/gcp SDKs) via
+      runc's own go.mod requirements — too large a blast radius for an
+      unreviewed same-night bump on a repo NodeVault's build pipeline
+      depends on. Deliberately deferred, not unfixable — remove this
+      exception once the bump is reviewed and applied.
+    owner: "HeaInSeo"
+    expires: "2026-08-25"
+    tracking_issue: "https://github.com/HeaInSeo/podbridge5/issues/5"
+
+  - id: GO-2026-5853
+    module: github.com/sigstore/fulcio
+    package: github.com/sigstore/fulcio
+    reason: >-
+      Fixed in v1.8.6, but bumping pulls the same ~30-module transitive
+      cascade as the sibling runc exception (issue #5) — they share the
+      sigstore/cloud-KMS dependency subtree. Deliberately deferred, not
+      unfixable — remove this exception once the bump is reviewed and
+      applied (can be done together with issue #5's runc bump).
+    owner: "HeaInSeo"
+    expires: "2026-08-25"
+    tracking_issue: "https://github.com/HeaInSeo/podbridge5/issues/6"
