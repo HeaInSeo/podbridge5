@@ -47,6 +47,22 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Ensure CGo system dependencies
+        if: matrix.language == 'go'
+        run: |
+          if [ -x /usr/bin/dnf ]; then
+            sudo /usr/bin/dnf install -y --enablerepo=powertools \
+              gpgme-devel libassuan-devel device-mapper-devel \
+              libseccomp-devel pkgconf-pkg-config
+          elif [ -x /usr/bin/apt-get ]; then
+            sudo /usr/bin/apt-get update -q
+            sudo /usr/bin/apt-get install -y --no-install-recommends \
+              libgpgme-dev libassuan-dev libbtrfs-dev \
+              libdevmapper-dev libseccomp-dev pkg-config
+          else
+            echo "Unsupported package manager" >&2; exit 1
+          fi
+
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
