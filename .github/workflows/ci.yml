@@ -181,6 +181,8 @@ jobs:
             -v \
             -race \
             -cover \
+            -shuffle=on \
+            -count=1 \
             -coverprofile=coverage.out \
             -tags "${{ env.BUILD_TAGS }}" \
             ./...
