@@ -42,7 +42,7 @@ jobs:
           cache: true
 
       - name: Validate GitHub Actions workflows
-        run: go run github.com/rhysd/actionlint/cmd/actionlint@${ACTIONLINT_VERSION}
+        run: go run "github.com/rhysd/actionlint/cmd/actionlint@${ACTIONLINT_VERSION}"
 
   # ────────────────────────────────────────────────────────────────
   # 1. 린트 (gosec 포함)
@@ -205,7 +205,7 @@ jobs:
 
       - name: govulncheck
         run: |
-          go install golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION}
+          go install "golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION}"
           govulncheck -tags "${{ env.BUILD_TAGS }}" -format json ./... > govulncheck.json
           go run ./cmd/govulncheckgate -input govulncheck.json
 
