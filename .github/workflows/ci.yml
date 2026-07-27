@@ -45,6 +45,25 @@ jobs:
         run: go run "github.com/rhysd/actionlint/cmd/actionlint@${ACTIONLINT_VERSION}"
 
   # ────────────────────────────────────────────────────────────────
+  # 0b. go.mod/go.sum drift 검증
+  # ────────────────────────────────────────────────────────────────
+  module-drift:
+    name: Module Drift
+    runs-on: [self-hosted, linux, podbridge5]
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: ${{ env.GO_VERSION_FILE }}
+          cache: true
+
+      - name: Verify go.mod and go.sum are tidy
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+
+  # ────────────────────────────────────────────────────────────────
   # 1. 린트 (gosec 포함)
   # ────────────────────────────────────────────────────────────────
   lint:
