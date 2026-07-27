@@ -21,8 +21,29 @@ concurrency:
 env:
   BUILD_TAGS: "exclude_graphdriver_btrfs exclude_graphdriver_devicemapper"
   GO_VERSION_FILE: go.mod
+  GOLANGCI_LINT_VERSION: v2.11.3
+  GOVULNCHECK_VERSION: v1.1.4
+  ACTIONLINT_VERSION: v1.7.7
 
 jobs:
+  # ────────────────────────────────────────────────────────────────
+  # 0. 워크플로 YAML 자체 린트
+  # ────────────────────────────────────────────────────────────────
+  actionlint:
+    name: Actionlint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: ${{ env.GO_VERSION_FILE }}
+          cache: true
+
+      - name: Validate GitHub Actions workflows
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@${ACTIONLINT_VERSION}
+
   # ────────────────────────────────────────────────────────────────
   # 1. 린트 (gosec 포함)
   # ────────────────────────────────────────────────────────────────
@@ -58,7 +79,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: latest
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
           install-mode: goinstall
           args: >-
             --build-tags "${{ env.BUILD_TAGS }}"
@@ -184,7 +205,7 @@ jobs:
 
       - name: govulncheck
         run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
+          go install golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION}
           govulncheck -tags "${{ env.BUILD_TAGS }}" -format json ./... > govulncheck.json
           go run ./cmd/govulncheckgate -input govulncheck.json
 
