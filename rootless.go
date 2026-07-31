@@ -75,3 +75,24 @@ func ReexecIfNeeded() bool {
 	unshare.MaybeReexecUsingUserNamespace(false)
 	return false
 }
+
+func reexecIfNeededForUserNamespaceMode(mode UserNamespaceMode) bool {
+	if buildah.InitReexec() {
+		return true
+	}
+	if shouldReexecForUserNamespaceMode(mode) {
+		unshare.MaybeReexecUsingUserNamespace(false)
+	}
+	return false
+}
+
+func shouldReexecForUserNamespaceMode(mode UserNamespaceMode) bool {
+	switch mode {
+	case UserNamespaceModeAuto, UserNamespaceModeReexec:
+		return true
+	case UserNamespaceModeExternal:
+		return false
+	default:
+		return true
+	}
+}

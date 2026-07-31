@@ -51,6 +51,22 @@ const (
 	BuildIsolationOCIRootless BuildIsolation = "rootless"
 )
 
+type UserNamespaceMode string
+
+const (
+	// UserNamespaceModeAuto preserves the historical behavior: podbridge5 may
+	// use Buildah/storage's rootless reexec helper when callers invoke a reexec
+	// entry point.
+	UserNamespaceModeAuto UserNamespaceMode = ""
+	// UserNamespaceModeExternal means the surrounding runtime, such as a
+	// Kubernetes Pod with user namespaces enabled, already provided the user
+	// namespace. podbridge5 must not create another one.
+	UserNamespaceModeExternal UserNamespaceMode = "external"
+	// UserNamespaceModeReexec explicitly allows podbridge5 to enter a
+	// Buildah/storage-managed user namespace via reexec.
+	UserNamespaceModeReexec UserNamespaceMode = "reexec"
+)
+
 type UserNamespaceBuildConfig struct {
 	OutputRef        string
 	ContextDirectory string
@@ -83,6 +99,11 @@ type UserNamespaceBuildConfig struct {
 	// io.MultiWriter(os.Stdout, &buf); this field does not replace stdout
 	// unless the caller omits it from that MultiWriter.
 	BuildLog io.Writer
+	// UserNamespaceMode controls whether podbridge5 is allowed to create a
+	// Buildah/storage-managed user namespace via reexec. Empty preserves the
+	// legacy auto behavior. Set UserNamespaceModeExternal in Kubernetes Pods
+	// where the container runtime already supplied the user namespace.
+	UserNamespaceMode UserNamespaceMode
 }
 
 // NewUserNamespaceBuildConfig returns an explicit, portable starting point for
@@ -99,10 +120,20 @@ func NewUserNamespaceBuildConfig(outputRef string, storageMode StorageMode) User
 	}
 }
 
+// NewExternalUserNamespaceBuildConfig returns a build config for environments
+// where the process is already inside the intended user namespace, such as a
+// Kubernetes Pod configured with user namespaces.
+func NewExternalUserNamespaceBuildConfig(outputRef string, storageMode StorageMode) UserNamespaceBuildConfig {
+	cfg := NewUserNamespaceBuildConfig(outputRef, storageMode)
+	cfg.UserNamespaceMode = UserNamespaceModeExternal
+	return cfg
+}
+
 type UserNamespaceExecutionProfile struct {
 	ActualEUID          int
 	ActualEGID          int
 	UserNamespace       bool
+	UserNamespaceMode   UserNamespaceMode
 	StorageMode         StorageMode
 	StorageDriver       string
 	GraphRoot           string
@@ -343,11 +374,15 @@ func UserNamespaceBuildExecutionProfile(config UserNamespaceBuildConfig) (UserNa
 	if err != nil {
 		return UserNamespaceExecutionProfile{}, err
 	}
+	if err := validateUserNamespaceMode(config.UserNamespaceMode); err != nil {
+		return UserNamespaceExecutionProfile{}, err
+	}
 
 	return UserNamespaceExecutionProfile{
 		ActualEUID:          os.Geteuid(),
 		ActualEGID:          os.Getegid(),
 		UserNamespace:       true,
+		UserNamespaceMode:   config.UserNamespaceMode,
 		StorageMode:         config.StorageMode,
 		StorageDriver:       storeOpts.GraphDriverName,
 		GraphRoot:           storeOpts.GraphRoot,
@@ -412,6 +447,15 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func validateUserNamespaceMode(mode UserNamespaceMode) error {
+	switch mode {
+	case UserNamespaceModeAuto, UserNamespaceModeExternal, UserNamespaceModeReexec:
+		return nil
+	default:
+		return fmt.Errorf("unsupported user namespace mode %q", mode)
+	}
 }
 
 func utilsContainsString(values []string, target string) bool {

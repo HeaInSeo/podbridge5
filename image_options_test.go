@@ -61,6 +61,25 @@ func TestNewUserNamespaceBuildConfig(t *testing.T) {
 	if got.Isolation != BuildIsolationOCI {
 		t.Fatalf("unexpected isolation: %q", got.Isolation)
 	}
+	if got.UserNamespaceMode != UserNamespaceModeAuto {
+		t.Fatalf("unexpected user namespace mode: %q", got.UserNamespaceMode)
+	}
+}
+
+func TestNewExternalUserNamespaceBuildConfig(t *testing.T) {
+	got := NewExternalUserNamespaceBuildConfig("registry.example.com/team/tool:latest", StorageNativeOverlay)
+	if got.OutputRef != "registry.example.com/team/tool:latest" {
+		t.Fatalf("unexpected output ref: %q", got.OutputRef)
+	}
+	if got.StorageMode != StorageNativeOverlay {
+		t.Fatalf("unexpected storage mode: %q", got.StorageMode)
+	}
+	if got.Isolation != BuildIsolationOCI {
+		t.Fatalf("unexpected isolation: %q", got.Isolation)
+	}
+	if got.UserNamespaceMode != UserNamespaceModeExternal {
+		t.Fatalf("unexpected user namespace mode: %q", got.UserNamespaceMode)
+	}
 }
 
 func TestStoreOptions(t *testing.T) {
@@ -311,6 +330,7 @@ func TestUserNamespaceBuildExecutionProfile(t *testing.T) {
 	got, err := UserNamespaceBuildExecutionProfile(UserNamespaceBuildConfig{
 		Runtime:                   "crun",
 		Isolation:                 BuildIsolationOCI,
+		UserNamespaceMode:         UserNamespaceModeExternal,
 		StorageMode:               StorageFuseOverlay,
 		RunRoot:                   "/run/custom",
 		GraphRoot:                 "/graph/custom",
@@ -325,6 +345,9 @@ func TestUserNamespaceBuildExecutionProfile(t *testing.T) {
 	}
 	if !got.UserNamespace {
 		t.Fatal("expected user namespace profile marker")
+	}
+	if got.UserNamespaceMode != UserNamespaceModeExternal {
+		t.Fatalf("unexpected user namespace mode: %q", got.UserNamespaceMode)
 	}
 	if got.StorageMode != StorageFuseOverlay || got.StorageDriver != "overlay" {
 		t.Fatalf("unexpected storage profile: mode=%q driver=%q", got.StorageMode, got.StorageDriver)
@@ -358,6 +381,15 @@ func TestUserNamespaceBuildExecutionProfileRejectsInvalidIsolation(t *testing.T)
 		Isolation:   "bad-isolation",
 	}); err == nil {
 		t.Fatal("expected error for bad isolation")
+	}
+}
+
+func TestUserNamespaceBuildExecutionProfileRejectsInvalidUserNamespaceMode(t *testing.T) {
+	if _, err := UserNamespaceBuildExecutionProfile(UserNamespaceBuildConfig{
+		StorageMode:       StorageVFS,
+		UserNamespaceMode: "nested-maybe",
+	}); err == nil {
+		t.Fatal("expected error for bad user namespace mode")
 	}
 }
 
