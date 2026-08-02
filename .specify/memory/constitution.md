@@ -7,19 +7,20 @@
   this prose.
 -->
 
-## Cross-repo invariants live in the Platform Spec Wiki (canonical)
+## Cross-repo invariants live in the platform canonical (NodeVault §4)
 
 Cross-repo invariants — reproducibility, `casHash`, `stableRef`, the artifact
-dual-axis (`lifecycle_phase` / `integrity_health`), the sori boundary, and
-"do not record what you did not observe" (§1.10) — are owned solely by the
-**Platform Spec Wiki `1. constitution`**. This document does not restate or fork
-them; on any conflict, the wiki §1 wins.
+dual-axis (`lifecycle_phase` / `integrity_health`), the sori boundary, and the
+image-build / ResolveRecipe rules — are owned solely by the platform canonical:
+**`github.com/HeaInSeo/NodeVault` — `docs/PLATFORM_MASTER_DESIGN.md` §4**
+(immutable architecture decisions). This document does not restate or fork
+them; on any conflict, §4 wins.
 
 Note: podbridge5 is the **in-process image builder** (buildah wrapper) linked
 into NodeVault. The **image-build invariant** — rootless build, no privileged
-fallback (wiki §1.8) — is therefore **cross-repo** and owned by the wiki. Even
+fallback (§4.8) — is therefore **cross-repo** and owned by the platform canonical. Even
 though this repo is where that build actually happens, the invariant is not
-restated or forked here; wiki §1.8 is canonical and wins on any conflict.
+restated or forked here; NodeVault §4.8 is canonical and wins on any conflict.
 
 ## Process discipline (repo-operational — owned by this repo)
 
@@ -70,7 +71,7 @@ restated or forked here; wiki §1.8 is canonical and wins on any conflict.
 ## §1.10 — "do not record what you did not observe"
 
 **Status: PROPOSED (not enforced in this repo).** §1.10 is a cross-repo
-invariant owned by the wiki; podbridge5 has **no deterministic rule** enforcing
+rule (not yet part of NodeVault §4); podbridge5 has **no deterministic rule** enforcing
 it today. Marked PROPOSED, not IMPLEMENTED, until such a gate exists.
 
 **Version**: 1.0.0 | **Ratified**: 2026-08-02 | **Last Amended**: 2026-08-02
