@@ -16,3 +16,10 @@ infra/multipass/.terraform/
 infra/multipass/terraform.tfstate
 infra/multipass/terraform.tfstate.*
 infra/multipass/terraform.tfvars
+
+.specify/feature.json
+
+# spec-kit scripts live under .specify/scripts; keep them tracked despite the
+# generic scripts/ ignore above
+!.specify/scripts/
+!.specify/scripts/**
