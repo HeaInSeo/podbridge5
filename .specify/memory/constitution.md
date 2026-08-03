@@ -58,8 +58,8 @@ restated or forked here; NodeVault §4.8 is canonical and wins on any conflict.
 - **go vet across build tags** (IMPLEMENTED — CI `build` job for base tags;
   `make check-runtime-build` runs the `runtime`+`integration` tag variant):
   compile/vet gate, incl. the runtime-tagged files the unit lane never compiles.
-- **actionlint** (IMPLEMENTED — CI `actionlint` job): GitHub Actions workflow lint.
-- **module-drift** (IMPLEMENTED — CI `module-drift` job): `go.mod`/`go.sum` tidiness.
+- **actionlint** (PROPOSED — runs in CI `actionlint` job but is NOT a required check, so it does not block merge): GitHub Actions workflow lint.
+- **module-drift** (PROPOSED — runs in CI `module-drift` job but is NOT a required check, so it does not block merge): `go.mod`/`go.sum` tidiness.
 - **CodeQL** (IMPLEMENTED — `.github/workflows/codeql.yml`): static analysis
   (Go + Actions).
 
