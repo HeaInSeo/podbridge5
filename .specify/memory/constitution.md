@@ -24,11 +24,12 @@ restated or forked here; NodeVault §4.8 is canonical and wins on any conflict.
 
 ## Process discipline (repo-operational — owned by this repo)
 
-- **Deterministic gates are the guarantee.** Merge is decided by deterministic
+- **Deterministic gates are the guarantee.** Merge is decided by the **required**
   checks (golangci-lint incl. gosec, govulncheck, race tests, `go vet` across
-  build tags, actionlint, module-drift, CodeQL). LLM/agent review is
-  **advisory**: a passing review never merges alone, a failing gate is never
-  overridden.
+  build tags, CodeQL). LLM/agent review is **advisory**: a passing review never
+  merges alone, a failing **required** gate is never overridden. `actionlint`
+  and `module-drift` also run in CI but are **not required checks** (advisory —
+  see the local-rules index below); they do not decide merges.
 - **Agent operating rules — see `AGENTS.md`** (repo root). That file governs how
   agents work in this repo; it is authoritative and is not duplicated here.
 - **Spec-anchored change**; **test-first** (behavioral changes ship with tests
