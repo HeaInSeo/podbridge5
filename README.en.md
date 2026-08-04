@@ -50,7 +50,7 @@ For NodeVault's rootless builder migration, `podbridge5` now exposes Buildah def
 Use `WithStoreRoots`, `WithStoreDriver`, `WithFuseOverlayfsMountProgram`, and `WithPartialImagePulls` when a cluster needs different storage behavior.
 
 Build options are available through `UserNamespaceImageBuildOptions()` and `BuildDockerfileContentUserNamespace()`.
-Start new build-and-push calls with `NewUserNamespaceBuildConfig()` to make OCI isolation and the storage mode explicit. For compatibility, an empty `Isolation` in the legacy `UserNamespaceBuildConfig{}` still resolves to `chroot`; public consumers should set isolation explicitly. Harbor cache refs can be wired to both cache-from and cache-to through `CacheRef`.
+Start new build-and-push calls with `NewUserNamespaceBuildConfig()` to make OCI isolation and the storage mode explicit. In environments where the runtime already supplies the user namespace, such as Kubernetes Pods, use `NewExternalUserNamespaceBuildConfig()` so podbridge5 does not create a second Buildah/storage user namespace via reexec. For compatibility, an empty `Isolation` in the legacy `UserNamespaceBuildConfig{}` still resolves to `chroot`; public consumers should set isolation explicitly. Harbor cache refs can be wired to both cache-from and cache-to through `CacheRef`.
 `DefaultUserNamespaceBuildEnvironment()` and `DefaultUserNamespaceBuildCapabilities()` are examples, not deployment requirements. Validate capabilities, AppArmor, and the storage driver for the target runtime; the library does not guarantee a Kubernetes security policy.
 
 ### Persistent Multipass runtime VM

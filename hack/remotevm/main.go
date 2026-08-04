@@ -16,6 +16,7 @@ import (
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
+	"golang.org/x/crypto/ssh/knownhosts"
 )
 
 const (
@@ -503,12 +504,32 @@ func newSSHClientConfig(cfg config) (*ssh.ClientConfig, error) {
 	if err != nil {
 		return nil, err
 	}
+	hostKeyCallback, err := hostKeyCallback()
+	if err != nil {
+		return nil, err
+	}
 	return &ssh.ClientConfig{
 		User:            cfg.User,
 		Auth:            auth,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), //nolint:gosec // lab-only machine
+		HostKeyCallback: hostKeyCallback,
 		Timeout:         30 * time.Second,
 	}, nil
+}
+
+func hostKeyCallback() (ssh.HostKeyCallback, error) {
+	knownHostsPath := os.Getenv("REMOTE_KNOWN_HOSTS")
+	if knownHostsPath == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, fmt.Errorf("resolve home directory for known_hosts: %w", err)
+		}
+		knownHostsPath = filepath.Join(home, ".ssh", "known_hosts")
+	}
+	callback, err := knownhosts.New(knownHostsPath)
+	if err != nil {
+		return nil, fmt.Errorf("load SSH known_hosts %q: %w", knownHostsPath, err)
+	}
+	return callback, nil
 }
 
 func authMethods(cfg config) ([]ssh.AuthMethod, error) {
