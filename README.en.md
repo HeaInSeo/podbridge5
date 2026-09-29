@@ -36,12 +36,12 @@ When something fails, it should be easier to tell whether the problem comes from
 
 ## Go baseline
 
-This repository uses `Go 1.25.6` as declared in `go.mod`.
-The policy is to stay aligned with the same `Go 1.25.x` baseline used by sibling projects.
+This repository uses `Go 1.26.8` as declared in `go.mod`.
+The policy is to stay aligned with the same `Go 1.26.x` baseline used by sibling projects.
 
 - The main entry points are `make test-unit`, `make test-runtime`, and `make test-runtime-integration`.
-- Those targets validate that the active `go` binary is `go1.25.6` before running tests.
-- The goal is not backward compatibility with older Go releases. The environment, CI, and VM path should match `1.25.x`.
+- Those targets validate that the active `go` binary is `go1.26.8` before running tests.
+- The goal is not backward compatibility with older Go releases. The environment, CI, and VM path should match `1.26.x`.
 
 ## Kubernetes user namespace build path
 

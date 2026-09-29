@@ -6,8 +6,8 @@ The main README stays focused on project description, while the VM-based validat
 The runtime initialization precedence itself is documented in [runtime-policy.en.md](runtime-policy.en.md).
 Both the host preflight and the Go runtime path use `CONTAINER_HOST -> XDG_RUNTIME_DIR -> default socket`.
 
-Every path in this document assumes `Go 1.25.6`.
-`podbridge5` follows the same `Go 1.25.x` baseline as sibling projects, and compatibility with older Go versions is not a goal.
+Every path in this document assumes `Go 1.26.8`.
+`podbridge5` follows the same `Go 1.26.x` baseline as sibling projects, and compatibility with older Go versions is not a goal.
 
 ## Validation paths
 
@@ -22,7 +22,7 @@ This is the fast path on the current host.
 - `make test-runtime`
 - `make test-runtime-integration`
 
-Before running tests, those targets pass through `go-version-check` so the active `go` binary must be `go1.25.6`.
+Before running tests, those targets pass through `go-version-check` so the active `go` binary must be `go1.26.8`.
 
 This path is useful for code changes and lightweight validation.
 `test-unit` is the fast path without runtime-tagged tests, while `test-runtime` exercises the current host with Podman/buildah available.
@@ -75,7 +75,7 @@ The Makefile handles the remote runtime VM lifecycle automatically.
 
 1. creates a fresh test VM on the remote machine
 2. installs required packages and prepares the system `podman` socket
-   This step also aligns the VM Go toolchain to `1.25.6`.
+   This step also aligns the VM Go toolchain to `1.26.8`.
    It also configures `/etc/subuid` and `/etc/subgid` for the `ubuntu` user and disables Ubuntu 24.04's AppArmor unprivileged user namespace restriction inside the test VM so the rootless `unshare` integration path can run.
 3. archives the current local `podbridge5` worktree and uploads it to the remote host
 4. syncs that archive into the fresh VM with `multipass transfer`

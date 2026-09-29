@@ -1,5 +1,5 @@
 GO ?= go
-GO_REQUIRED_VERSION ?= 1.25.6
+GO_REQUIRED_VERSION ?= 1.26.8
 
 PODBRIDGE5_VM_NAME ?= podbridge5-dev
 PODBRIDGE5_VM_CPUS ?= 2
@@ -116,7 +116,7 @@ go-version-check:
 			;; \
 		*) \
 			echo "[go-version-check] required go$(GO_REQUIRED_VERSION), got $${actual:-<unknown>}" >&2; \
-			echo "[go-version-check] podbridge5 tracks the same Go 1.25.x baseline as sibling projects" >&2; \
+			echo "[go-version-check] podbridge5 tracks the same Go 1.26.x baseline as sibling projects" >&2; \
 			exit 1; \
 			;; \
 	esac
