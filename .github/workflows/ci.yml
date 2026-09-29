@@ -94,8 +94,8 @@ jobs:
             echo "Unsupported package manager" >&2; exit 1
           fi
 
-      # install-mode: goinstall — 시스템 Go(1.25.5)로 소스 빌드.
-      # 바이너리 릴리스는 go1.24로 빌드돼 go1.25.5 프로젝트를 처리 못함.
+      # install-mode: goinstall — setup-go가 설치한 go.mod 버전으로 소스 빌드.
+      # 바이너리 릴리스는 더 낮은 Go로 빌드돼 최신 go directive 프로젝트를 처리 못함.
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:

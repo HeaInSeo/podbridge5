@@ -61,7 +61,7 @@ func main() {
 	vmName := getenv("PODBRIDGE5_VM_NAME", "podbridge5-dev")
 	vmRepo := getenv("PODBRIDGE5_VM_REPO", "/home/ubuntu/work/src/github.com/HeaInSeo/podbridge5")
 	localRepo := getenv("PODBRIDGE5_LOCAL_REPO", "/opt/go/src/github.com/HeaInSeo/podbridge5")
-	goVersion := getenv("PODBRIDGE5_GO_VERSION", "1.25.6")
+	goVersion := getenv("PODBRIDGE5_GO_VERSION", "1.26.8")
 	cpus := getenv("PODBRIDGE5_VM_CPUS", "2")
 	memory := getenv("PODBRIDGE5_VM_MEMORY", "4G")
 	disk := getenv("PODBRIDGE5_VM_DISK", "20G")
