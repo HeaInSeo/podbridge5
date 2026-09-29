@@ -64,6 +64,14 @@ jobs:
           git diff --exit-code -- go.mod go.sum
           test -z "$(git status --porcelain -- go.mod go.sum)"
 
+      # hack/remotevm is its own module (the VM test driver the Makefile runs);
+      # the root ./... patterns never reach it.
+      - name: Verify hack/remotevm go.mod and go.sum are tidy
+        run: |
+          go -C hack/remotevm mod tidy
+          git diff --exit-code -- hack/remotevm/go.mod hack/remotevm/go.sum
+          test -z "$(git status --porcelain -- hack/remotevm/go.mod hack/remotevm/go.sum)"
+
   # ────────────────────────────────────────────────────────────────
   # 1. 린트 (gosec 포함)
   # ────────────────────────────────────────────────────────────────
@@ -146,6 +154,11 @@ jobs:
       # until someone runs them on the remote VM (see make vm-test-runtime).
       - name: go vet (runtime + integration build tags)
         run: go vet -tags "${{ env.BUILD_TAGS }} runtime integration" ./...
+
+      - name: go build + vet (hack/remotevm module)
+        run: |
+          go -C hack/remotevm build ./...
+          go -C hack/remotevm vet ./...
 
   # ────────────────────────────────────────────────────────────────
   # 3. 유닛 테스트 (podman/buildah 런타임 불필요)
@@ -231,10 +244,19 @@ jobs:
           govulncheck -tags "${{ env.BUILD_TAGS }}" -format json ./... > govulncheck.json
           go run ./cmd/govulncheckgate -input govulncheck.json
 
+      # The root ./... does not include the hack/remotevm module (issue #17).
+      # Same gate, same exceptions file: no separate allowance for it.
+      - name: govulncheck (hack/remotevm module)
+        run: |
+          govulncheck -C hack/remotevm -format json ./... > govulncheck-remotevm.json
+          go run ./cmd/govulncheckgate -input govulncheck-remotevm.json
+
       - name: Upload govulncheck report
         uses: actions/upload-artifact@v7
         if: always()
         with:
           name: govulncheck-${{ github.run_id }}
-          path: govulncheck.json
+          path: |
+            govulncheck.json
+            govulncheck-remotevm.json
           retention-days: 14
